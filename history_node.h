@@ -12,7 +12,6 @@ class HistoryNode {
 		HistoryNode();
 		int prefix_cost;
 		int lower_bound;
-		std::vector<Edge> suffix_schedule;
 };
 
 #endif

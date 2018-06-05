@@ -112,24 +112,6 @@ void Solver::update_best_solution(){
 		best_solution = solution_weight;
 		best_solution_nodes = solution;
 	}
-	vector<bool> visited_nodes_copy(cost_graph->node_count(), true);
-	int solution_weight_copy = solution_weight;
-	for(int i = solution.size()-1; i>0; --i){
-		Edge e = solution[i];
-		int last_visit = e.source;
-		solution_weight_copy -= e.weight;
-		visited_nodes_copy[e.dest] = false;
-		pair<std::vector<bool>, int> history_pair = pair<std::vector<bool>, int>(visited_nodes_copy, last_visit);
-		auto p = history.find(history_pair);
-		if(p->second.suffix_schedule.empty() || solution_weight < p->second.lower_bound){
-			vector<Edge>::const_iterator first = solution.begin()+i;
-			vector<Edge>::const_iterator last = solution.end();
-			p->second.suffix_schedule = vector<Edge>(first, last);
-			p->second.prefix_cost = solution_weight_copy;
-			p->second.lower_bound = solution_weight;
-		}
-	}
-	
 }
 
 void Solver::reset_solution(){
@@ -201,17 +183,9 @@ bool Solver::better_history(int cost, int current_node){
 		if(p->second.prefix_cost > cost){
 			int improvement = p->second.prefix_cost - cost;
 			if(p->second.lower_bound - improvement < best_solution){
-				if(!p->second.suffix_schedule.empty()){
-					solution_weight = p->second.lower_bound - improvement;
-					solution.insert(solution.end(), p->second.suffix_schedule.begin(), p->second.suffix_schedule.end());
-					p->second.prefix_cost = cost;
-					p->second.lower_bound = p->second.lower_bound - improvement;
-					update_best_solution();
-				} else {
-					continue_search = true;
-					p->second.prefix_cost = cost;
-					p->second.lower_bound = p->second.lower_bound - improvement;
-				}
+				continue_search = true;
+				p->second.prefix_cost = cost;
+				p->second.lower_bound = p->second.lower_bound - improvement;
 			} else {
 				p->second.prefix_cost = cost;
 				p->second.lower_bound = p->second.lower_bound - improvement;
