@@ -1,0 +1,39 @@
+#!/bin/bash
+
+time_limit=4
+program=./test
+
+run_program()
+{
+	$program soplib/$1.sop $time_limit > soplib_result/$1.txt
+}
+
+run_program R.200.100.30
+run_program R.200.100.60
+run_program R.200.1000.30
+run_program R.200.1000.60
+
+run_program R.300.100.30
+run_program R.300.100.60
+run_program R.300.1000.30
+run_program R.300.1000.60
+
+run_program R.400.100.30
+run_program R.400.100.60
+run_program R.400.1000.30
+run_program R.400.1000.60
+
+run_program R.500.100.30
+run_program R.500.100.60
+run_program R.500.1000.30
+run_program R.500.1000.60
+
+run_program R.600.100.30
+run_program R.600.100.60
+run_program R.600.1000.30
+run_program R.600.1000.60
+
+run_program R.700.100.30
+run_program R.700.100.60
+run_program R.700.1000.30
+run_program R.700.1000.60

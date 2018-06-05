@@ -1,0 +1,20 @@
+#!/bin/bash
+
+time_limit=4
+program=./test
+
+run_program()
+{
+	$program tsplib/$1.sop $time_limit > tsplib_result/$1.txt
+}
+
+run_program br17.10
+run_program br17.12
+run_program ESC07
+run_program ESC11
+run_program ESC12
+run_program ESC25
+run_program ft53.4
+run_program rbg109a
+run_program p43.4
+run_program ry48p.4
