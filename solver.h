@@ -8,6 +8,7 @@
 #include "edge.h"
 #include "digraph.h"
 #include "history_node.h"
+#include "hash_map.h"
 
 namespace std
 {
@@ -26,6 +27,7 @@ class Solver {
 		void print_solution();
 		void nearest_neighbor();
 		void set_time_limit_per_node(int limit);
+		void set_hash_size(size_t size);
 		int get_static_lower_bound();
 		int best_solution_cost();
 		std::vector<Edge> best_solution_path();
@@ -37,7 +39,7 @@ class Solver {
 		int time_limit;
 		Digraph const * cost_graph;
 		Digraph const * precedance_graph;
-		static std::unordered_map<std::pair<std::vector<bool>, int>, HistoryNode> history;
+		static HashMap<std::pair<std::vector<bool>, int>, HistoryNode> history;
 		bool valid_node(int node);
 		bool predecessors_visited(int node);
 		void update_best_solution();

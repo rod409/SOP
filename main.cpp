@@ -18,8 +18,8 @@ void creat_graphs_from_file(string file, Digraph& g, Digraph& p);
 void print_solution_path(const vector<Edge>& path);
 
 int main(int argc, char *argv[]){
-	if(argc != 3){
-		std::cout << "Usage: test <file name> <time limit>" << std::endl;
+	if(argc != 4){
+		std::cout << "Usage: test <file name> <time limit> <hash table size>" << std::endl;
 		return 1;
 	}
 		
@@ -29,6 +29,7 @@ int main(int argc, char *argv[]){
 	g.sort_edges();
 	Solver s = Solver(g, p);
 	s.set_time_limit_per_node(std::stoi(argv[2]));
+	s.set_hash_size(std::stoi(argv[3]));
 	
 	s.nearest_neighbor();
 	cout << "static lower bound: " << s.get_static_lower_bound() << std::endl;

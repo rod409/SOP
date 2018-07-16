@@ -9,16 +9,16 @@
 #include "edge.h"
 #include "digraph.h"
 #include "history_node.h"
+#include "hash_map.h"
 
 using std::vector;
-using std::unordered_map;
 using std::pair;
 
 static int best_solution = std::numeric_limits<int>::max();
 static vector<Edge> best_solution_nodes;
 static int static_lower_bound = 0;
 
-unordered_map<pair<vector<bool>, int>, HistoryNode> Solver::history;
+HashMap<pair<vector<bool>, int>, HistoryNode> Solver::history;
 
 Solver::Solver(const Digraph& cost_graph, const Digraph& precedance_graph){
 	this->cost_graph = &cost_graph;
@@ -30,6 +30,10 @@ Solver::Solver(const Digraph& cost_graph, const Digraph& precedance_graph){
 
 void Solver::set_time_limit_per_node(int limit){
 	time_limit = limit*cost_graph->node_count();
+}
+
+void Solver::set_hash_size(size_t size){
+	history.set_size(size);
 }
 
 void Solver::solve_sop(){
@@ -193,7 +197,7 @@ bool Solver::better_history(int cost, int current_node){
 		}
 	} else {
 		int bound = edge_bound(current_node);
-		history[history_pair] = HistoryNode(cost, bound);
+		history.put(history_pair, HistoryNode(cost, bound));
 		continue_search = bound < best_solution;
 	}
 	return continue_search;
