@@ -3,29 +3,45 @@
 #include <string>
 #include <chrono>
 #include <algorithm>
-#include <unordered_map>
+#include <thread>
+#include <mutex>
 
 #include "solver.h"
 #include "edge.h"
 #include "digraph.h"
 #include "history_node.h"
 #include "hash_map.h"
+#include "solver_state.h"
 
 using std::vector;
 using std::pair;
+using std::thread;
+using std::mutex;
 
 static int best_solution = std::numeric_limits<int>::max();
 static vector<Edge> best_solution_nodes;
 static int static_lower_bound = 0;
+static int time_limit = 100;
+static std::chrono::time_point<std::chrono::system_clock> start_time;
+static mutex best_solution_mutex;
+static vector<SolverState> first_visits;
+static mutex first_visits_mutex;
 
 HashMap<pair<vector<bool>, int>, HistoryNode> Solver::history;
+int Solver::thread_count = 0;
 
 Solver::Solver(const Digraph& cost_graph, const Digraph& precedance_graph){
 	this->cost_graph = &cost_graph;
 	this->precedance_graph = &precedance_graph;
 	visited_nodes.assign(cost_graph.node_count(), false);
 	solution_weight = 0;
-	time_limit = 2.0*cost_graph.node_count();
+}
+
+Solver::Solver(Digraph const * cost_graph, Digraph const * precedance_graph){
+	this->cost_graph = cost_graph;
+	this->precedance_graph = precedance_graph;
+	visited_nodes.assign(cost_graph->node_count(), false);
+	solution_weight = 0;
 }
 
 void Solver::set_time_limit_per_node(int limit){
@@ -36,53 +52,130 @@ void Solver::set_hash_size(size_t size){
 	history.set_size(size);
 }
 
-void Solver::solve_sop(){
-	std::chrono::time_point<std::chrono::system_clock> start_time, current_time;
+void Solver::solve_sop_parallel(int num_threads){
 	start_time = std::chrono::system_clock::now();
-	
+	thread_count = num_threads;
 	for(int i = 0; i < cost_graph->node_count(); ++i){
-		vector<Edge> st;
-		reset_solution();
-		if(predecessors_visited(i)){
-			Edge start(i, i, 0);
-			st.push_back(start);
-			while(!st.empty()){
-				Edge last_edge = st.back();
-				st.pop_back();
-				solution.push_back(last_edge);
-				solution_weight += last_edge.weight;
-				
-				visited_nodes[last_edge.dest] = true;
-				last_visited_node = last_edge.dest;
-				
-				if(better_history(solution_weight, last_edge.dest)){
-					if(solution.size() == cost_graph->node_count()){
-						update_best_solution();
-						if(!st.empty()){
-							backtrack(st.back().source);
-						}
-				
-					} else {
-						for(const Edge& e : cost_graph->adj_outgoing(last_edge.dest)){
-							if(valid_node(e.dest)){
-								st.push_back(e);
-							}
+		solution.clear();
+		solution.push_back(Edge(i, i, 0));
+		reset_solution(SolverState(Edge(i, i, 0), vector<Edge>(1, Edge(i, i, 0)), 0));
+		for(const Edge& e : cost_graph->adj_outgoing(i)){
+			if(valid_node(e.dest)){
+				first_visits.insert(first_visits.begin(), SolverState(e, vector<Edge>(1, Edge(i, i, 0)), 0));
+			}
+		}
+		if(!first_visits.empty()){
+			vector<thread> solver_threads(thread_count);
+			vector<Solver> solvers;
+			for(int j = 0; j < thread_count; ++j){
+				solvers.push_back(Solver(cost_graph, precedance_graph));
+				if(first_visits.size() < thread_count){
+					first_visits_mutex.lock();
+					split_visits();
+					first_visits_mutex.unlock();
+				}
+				if(!first_visits.empty()){
+					SolverState first_visit = first_visits.front();
+					first_visits.erase(first_visits.begin());
+					solver_threads[j] = thread(&Solver::solve_sop, solvers[j], first_visit);
+				}
+			}
+			for(int j = 0; j < thread_count; ++j){
+				if(solver_threads[j].joinable()){
+					solver_threads[j].join();
+				}
+			}
+		}
+	}
+}
+
+void Solver::split_visits(){
+	int initial_size = first_visits.size();
+	bool split = true;
+	int index = 0;
+	while(split && index < first_visits.size()){
+		if(first_visits.empty() || first_visits.size() > thread_count){
+			split = false;
+		} else {
+			SolverState first_visit = first_visits[index];
+			visited_nodes.assign(cost_graph->node_count(), false);
+			for(const Edge& e: first_visit.path){
+				visited_nodes[e.dest] = true;
+			}
+			if(first_visit.path.size() < cost_graph->node_count()-1){
+				first_visits.erase(first_visits.begin() + index);
+				--index;
+				first_visit.path.push_back(first_visit.next_edge);
+				first_visit.cost += first_visit.next_edge.weight;
+				visited_nodes[first_visit.next_edge.dest] = true;
+				if(first_visit.cost < best_solution){
+					for(const Edge& e : cost_graph->adj_outgoing(first_visit.next_edge.dest)){
+						if(valid_node(e.dest)){
+							first_visits.push_back(SolverState(e, first_visit.path, first_visit.cost));
 						}
 					}
-				} else {
+				}
+			}
+		}
+		++index;
+	}
+}
+
+void Solver::solve_sop(SolverState first_visit){
+	std::chrono::time_point<std::chrono::system_clock> current_time;
+	int solution_size = cost_graph->node_count();
+	bool start_new_search = true;
+	while(start_new_search){
+		vector<Edge> st;
+		reset_solution(first_visit);
+		st.push_back(first_visit.next_edge);
+		while(!st.empty()){
+			Edge last_edge = st.back();
+			st.pop_back();
+			solution.push_back(last_edge);
+			solution_weight += last_edge.weight;
+		
+			visited_nodes[last_edge.dest] = true;
+			last_visited_node = last_edge.dest;
+		
+			if(better_history(solution_weight, last_edge.dest)){
+				if(solution.size() == solution_size){
+					update_best_solution();
 					if(!st.empty()){
 						backtrack(st.back().source);
 					}
+		
+				} else {
+					for(const Edge& e : cost_graph->adj_outgoing(last_edge.dest)){
+						if(valid_node(e.dest)){
+							st.push_back(e);
+						}
+					}
 				}
-				current_time = std::chrono::system_clock::now();
-				std::chrono::duration<double> elapsed_time = current_time - start_time;
-				if(elapsed_time.count() > time_limit){
-					i = cost_graph->node_count();
-					break;
+			} else {
+				if(!st.empty()){
+					backtrack(st.back().source);
 				}
 			}
-			
+			current_time = std::chrono::system_clock::now();
+			std::chrono::duration<double> elapsed_time = current_time - start_time;
+			if(elapsed_time.count() > time_limit){
+				break;
+			}
 		}
+		first_visits_mutex.lock();
+		if(!first_visits.empty()){
+			if(first_visits.size() < thread_count){
+				split_visits();
+			}
+			if(!first_visits.empty()){
+				first_visit = first_visits.front();
+				first_visits.erase(first_visits.begin());
+			}
+		} else {
+			start_new_search = false;
+		}
+		first_visits_mutex.unlock();
 	}
 }
 
@@ -112,16 +205,22 @@ bool Solver::predecessors_visited(int node){
 }
 
 void Solver::update_best_solution(){
+	best_solution_mutex.lock();
 	if(solution_weight < best_solution){
 		best_solution = solution_weight;
 		best_solution_nodes = solution;
 	}
+	best_solution_mutex.unlock();
 }
 
-void Solver::reset_solution(){
+void Solver::reset_solution(SolverState state){
 	solution.clear();
-	solution_weight = 0;
+	solution = state.path;
+	solution_weight = state.cost;
 	visited_nodes.assign(cost_graph->node_count(), false);
+	for(const Edge& e: state.path){
+		visited_nodes[e.dest] = true;
+	}
 }
 
 int Solver::get_static_lower_bound(){
@@ -183,21 +282,45 @@ bool Solver::better_history(int cost, int current_node){
 	pair<std::vector<bool>, int> history_pair = pair<std::vector<bool>, int>(visited_nodes, last_visited_node);
 	auto p = history.find(history_pair);
 	bool continue_search = false;
-	if(p != history.end()){
-		if(p->second.prefix_cost > cost){
-			int improvement = p->second.prefix_cost - cost;
-			if(p->second.lower_bound - improvement < best_solution){
+	if(p.first != history.end()){
+		if(p.first->second.prefix_cost > cost){
+			history.lock_bucket(p.second);
+			int improvement = p.first->second.prefix_cost - cost;
+			
+			if(p.first->second.lower_bound - improvement < best_solution){
 				continue_search = true;
-				p->second.prefix_cost = cost;
-				p->second.lower_bound = p->second.lower_bound - improvement;
+				p.first->second.prefix_cost = cost;
+				p.first->second.lower_bound = p.first->second.lower_bound - improvement;
 			} else {
-				p->second.prefix_cost = cost;
-				p->second.lower_bound = p->second.lower_bound - improvement;
+				if(p.first->second.prefix_cost > cost){
+					p.first->second.prefix_cost = cost;
+					p.first->second.lower_bound = p.first->second.lower_bound - improvement;
+				}
 			}
+			history.unlock_bucket(p.second);
 		}
 	} else {
 		int bound = edge_bound(current_node);
-		history.put(history_pair, HistoryNode(cost, bound));
+		
+		p = history.find(history_pair);
+		if(p.first == history.end()){
+			history.put(history_pair, HistoryNode(cost, bound));
+		} else {
+			if(p.first->second.prefix_cost > cost){
+				history.lock_bucket(p.second);
+				int improvement = p.first->second.prefix_cost - cost;
+				if(p.first->second.lower_bound - improvement < best_solution){
+					continue_search = true;
+					p.first->second.prefix_cost = cost;
+					p.first->second.lower_bound = p.first->second.lower_bound - improvement;
+				} else {
+					p.first->second.prefix_cost = cost;
+					p.first->second.lower_bound = p.first->second.lower_bound - improvement;
+				}
+				history.unlock_bucket(p.second);
+			}
+		}
+		
 		continue_search = bound < best_solution;
 	}
 	return continue_search;
@@ -206,7 +329,7 @@ bool Solver::better_history(int cost, int current_node){
 void Solver::nearest_neighbor(){
 	Edge current_node(0,0,0);
 	static_lower_bound = edge_bound(0);
-	reset_solution();
+	reset_solution(SolverState(current_node, vector<Edge>(), 0));
 	visited_nodes[0] = true;
 	solution.push_back(current_node);
 	bool continue_search = true;

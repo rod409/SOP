@@ -3,12 +3,12 @@
 
 #include <vector>
 #include <utility>
-#include <unordered_map>
 
 #include "edge.h"
 #include "digraph.h"
 #include "history_node.h"
 #include "hash_map.h"
+#include "solver_state.h"
 
 namespace std
 {
@@ -23,7 +23,9 @@ namespace std
 class Solver {
 	public:
 		Solver(const Digraph& cost_graph, const Digraph& precedance_graph);
-		void solve_sop();
+		Solver(Digraph const * cost_graph, Digraph const * precedance_graph);
+		void solve_sop_parallel(int nub_threads);
+		void solve_sop(SolverState first_visit);
 		void print_solution();
 		void nearest_neighbor();
 		void set_time_limit_per_node(int limit);
@@ -36,17 +38,18 @@ class Solver {
 		int solution_weight;
 		std::vector<bool> visited_nodes;
 		int last_visited_node;
-		int time_limit;
 		Digraph const * cost_graph;
 		Digraph const * precedance_graph;
 		static HashMap<std::pair<std::vector<bool>, int>, HistoryNode> history;
+		static int thread_count;
 		bool valid_node(int node);
 		bool predecessors_visited(int node);
 		void update_best_solution();
-		void reset_solution();
+		void reset_solution(SolverState state);
 		int edge_bound(int current_node);
 		void backtrack(int source);
 		bool better_history(int cost, int current_node);
+		void split_visits();
 };
 
 #endif

@@ -6,6 +6,12 @@ Edge::Edge(int source, int dest, int weight){
 	this->weight = weight;
 }
 
+Edge::Edge(){
+	this->source = 0;
+	this->dest = 0;
+	this->weight = 0;
+}
+
 bool operator<(const Edge& first, const Edge& second){
 	return first.weight < second.weight;
 }

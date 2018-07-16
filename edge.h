@@ -4,6 +4,7 @@
 class Edge {
 	public:
 		Edge(int source, int dest, int weight);
+		Edge();
 		int source;
 		int dest;
 		int weight;

@@ -18,8 +18,8 @@ void creat_graphs_from_file(string file, Digraph& g, Digraph& p);
 void print_solution_path(const vector<Edge>& path);
 
 int main(int argc, char *argv[]){
-	if(argc != 4){
-		std::cout << "Usage: test <file name> <time limit> <hash table size>" << std::endl;
+	if(argc != 5){
+		std::cout << "Usage: ./main <file name> <time limit> <hash table size> <number of threads>" << std::endl;
 		return 1;
 	}
 		
@@ -39,7 +39,7 @@ int main(int argc, char *argv[]){
 	
 	std::chrono::time_point<std::chrono::system_clock> start, end;
 	start = std::chrono::system_clock::now();
-	s.solve_sop();
+	s.solve_sop_parallel(std::stoi(argv[4]));
 	
 	end = std::chrono::system_clock::now();
 	std::chrono::duration<double> elapsed_time = end - start;
