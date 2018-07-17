@@ -1,11 +1,13 @@
 #!/bin/bash
 
 time_limit=3
-program=./test
+program=./main
+table_size=12582917
+thread_count=4
 
 run_program()
 {
-	$program mibench/$1.sop $time_limit > mibench_result/$1.txt
+	$program mibench/$1.sop $time_limit $table_size $thread_count > mibench_result/$1.txt
 }
 
 run_program gsm.153.124

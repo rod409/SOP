@@ -1,11 +1,13 @@
 #!/bin/bash
 
 time_limit=4
-program=./test
+program=./main
+table_size=12582917
+thread_count=4
 
 run_program()
 {
-	$program soplib/$1.sop $time_limit > soplib_result/$1.txt
+	$program soplib/$1.sop $time_limit $table_size $thread_count > soplib_result/$1.txt
 }
 
 run_program R.200.100.30

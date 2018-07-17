@@ -1,11 +1,13 @@
 #!/bin/bash
 
 time_limit=4
-program=./test
+program=./main
+table_size=12582917
+thread_count=4
 
 run_program()
 {
-	$program tsplib/$1.sop $time_limit > tsplib_result/$1.txt
+	$program tsplib/$1.sop $time_limit $table_size $thread_count > tsplib_result/$1.txt
 }
 
 run_program br17.10
