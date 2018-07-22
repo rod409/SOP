@@ -14,4 +14,11 @@ class SolverState{
 		int cost;
 };
 
+class SolverStateCompare{
+	public:
+		bool operator()(const SolverState& s1, const SolverState& s2) const{
+			return s1.path.size() > s2.path.size();
+		}
+};
+
 #endif

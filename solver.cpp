@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <thread>
 #include <mutex>
+#include <queue>
 
 #include "solver.h"
 #include "edge.h"
@@ -17,6 +18,7 @@ using std::vector;
 using std::pair;
 using std::thread;
 using std::mutex;
+using std::priority_queue;
 
 static int best_solution = std::numeric_limits<int>::max();
 static vector<Edge> best_solution_nodes;
@@ -24,7 +26,7 @@ static int static_lower_bound = 0;
 static int time_limit = 100;
 static std::chrono::time_point<std::chrono::system_clock> start_time;
 static mutex best_solution_mutex;
-static vector<SolverState> first_visits;
+static priority_queue<SolverState, vector<SolverState>, SolverStateCompare> first_visits;
 static mutex first_visits_mutex;
 
 HashMap<pair<vector<bool>, int>, HistoryNode> Solver::history;
@@ -61,25 +63,25 @@ void Solver::solve_sop_parallel(int num_threads){
 		reset_solution(SolverState(Edge(i, i, 0), vector<Edge>(1, Edge(i, i, 0)), 0));
 		for(const Edge& e : cost_graph->adj_outgoing(i)){
 			if(valid_node(e.dest)){
-				first_visits.insert(first_visits.begin(), SolverState(e, vector<Edge>(1, Edge(i, i, 0)), 0));
+				first_visits.push(SolverState(e, vector<Edge>(1, Edge(i, i, 0)), 0));
 			}
 		}
 		if(!first_visits.empty()){
 			vector<thread> solver_threads(thread_count);
 			vector<Solver> solvers;
+			first_visits_mutex.lock();
 			for(int j = 0; j < thread_count; ++j){
 				solvers.push_back(Solver(cost_graph, precedance_graph));
 				if(first_visits.size() < thread_count){
-					first_visits_mutex.lock();
 					split_visits();
-					first_visits_mutex.unlock();
 				}
 				if(!first_visits.empty()){
-					SolverState first_visit = first_visits.front();
-					first_visits.erase(first_visits.begin());
+					SolverState first_visit = first_visits.top();
+					first_visits.pop();
 					solver_threads[j] = thread(&Solver::solve_sop, solvers[j], first_visit);
 				}
 			}
+			first_visits_mutex.unlock();
 			for(int j = 0; j < thread_count; ++j){
 				if(solver_threads[j].joinable()){
 					solver_threads[j].join();
@@ -97,13 +99,13 @@ void Solver::split_visits(){
 		if(first_visits.empty() || first_visits.size() > thread_count){
 			split = false;
 		} else {
-			SolverState first_visit = first_visits[index];
+			SolverState first_visit = first_visits.top();;
 			visited_nodes.assign(cost_graph->node_count(), false);
 			for(const Edge& e: first_visit.path){
 				visited_nodes[e.dest] = true;
 			}
 			if(first_visit.path.size() < cost_graph->node_count()-1){
-				first_visits.erase(first_visits.begin() + index);
+				first_visits.pop();
 				--index;
 				first_visit.path.push_back(first_visit.next_edge);
 				first_visit.cost += first_visit.next_edge.weight;
@@ -111,7 +113,7 @@ void Solver::split_visits(){
 				if(first_visit.cost < best_solution){
 					for(const Edge& e : cost_graph->adj_outgoing(first_visit.next_edge.dest)){
 						if(valid_node(e.dest)){
-							first_visits.push_back(SolverState(e, first_visit.path, first_visit.cost));
+							first_visits.push(SolverState(e, first_visit.path, first_visit.cost));
 						}
 					}
 				}
@@ -169,8 +171,8 @@ void Solver::solve_sop(SolverState first_visit){
 				split_visits();
 			}
 			if(!first_visits.empty()){
-				first_visit = first_visits.front();
-				first_visits.erase(first_visits.begin());
+				first_visit = first_visits.top();
+				first_visits.pop();
 			}
 		} else {
 			start_new_search = false;
