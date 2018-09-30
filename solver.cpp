@@ -3,7 +3,7 @@
 #include <string>
 #include <chrono>
 #include <algorithm>
-#include <unordered_map>
+#include <cmath>
 
 #include "solver.h"
 #include "edge.h"
@@ -33,7 +33,9 @@ void Solver::set_time_limit_per_node(int limit){
 }
 
 void Solver::set_hash_size(size_t size){
-	history.set_size(size);
+	size_t bit_vector_mem = sizeof(visited_nodes) + std::max((size_t)std::ceil((float)cost_graph->node_count()/8), (size_t)32);
+	history.set_size(size, bit_vector_mem);
+	
 }
 
 void Solver::solve_sop(){
