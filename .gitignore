@@ -51,3 +51,9 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# output folders
+tsplib_result/*
+mibench_result/*
+soplib_result/*
+
