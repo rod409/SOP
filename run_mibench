@@ -1,7 +1,7 @@
 #!/bin/bash
 
 time_limit=3
-program=./test
+program=./main
 
 run_program()
 {
