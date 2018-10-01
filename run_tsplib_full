@@ -1,15 +1,12 @@
 #!/bin/bash
 
 time_limit=3
-hash_table_size=12582917
 program=./main
+hash_table_size=12582917
 
-echo "instance,static_lower_bound,nearest_neighbor_cost,best_solution_cost,time(sec)" > tsplib_result/all_results.csv
 run_program()
 {
-	str="$($program tsplib/$1.sop $time_limit $hash_table_size)"
-	str="$1,$str"
-	echo "$str" >> tsplib_result/all_results.csv
+	$program tsplib/$1.sop $time_limit $hash_table_size full > tsplib_result/$1.txt
 }
 
 run_program br17.10
