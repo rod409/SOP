@@ -18,11 +18,16 @@ void creat_graphs_from_file(string file, Digraph& g, Digraph& p);
 void print_solution_path(const vector<Edge>& path);
 
 int main(int argc, char *argv[]){
-	if(argc != 5){
-		std::cout << "Usage: ./main <file name> <time limit> <hash table size> <number of threads>" << std::endl;
+	if(argc != 5 && argc != 6){
+		std::cout << "Usage: ./main <file name> <time limit> <hash table size> [mode] <number of threads>" << std::endl;
 		return 1;
 	}
-		
+	bool full_print = false;
+	string full("full");
+	if(argc == 6 && full.compare(argv[4]) == 0){
+		full_print = true;
+	}
+	
 	Digraph g;
 	Digraph p;
 	creat_graphs_from_file(argv[1], g, p);
@@ -32,23 +37,35 @@ int main(int argc, char *argv[]){
 	s.set_hash_size(std::stoi(argv[3]));
 	
 	s.nearest_neighbor();
-	cout << "static lower bound: " << s.get_static_lower_bound() << std::endl;
-	cout << "NN solution is" << std::endl;
-	print_solution_path(s.best_solution_path());
-	cout << "with cost: " << s.best_solution_cost() << std::endl;
+	int static_lower_bound = s.get_static_lower_bound();
+	int nearest_neighbor_cost = s.best_solution_cost();
+	int num_threads;
+	if(full_print){
+		cout << "static lower bound: " << static_lower_bound << std::endl;
+		cout << "NN solution is" << std::endl;
+		print_solution_path(s.best_solution_path());
+		cout << "with cost: " << nearest_neighbor_cost << std::endl;
+		num_threads = std::stoi(argv[5]);
+	} else {
+		num_threads = std::stoi(argv[4]);
+	}
 	
 	std::chrono::time_point<std::chrono::system_clock> start, end;
 	start = std::chrono::system_clock::now();
-	s.solve_sop_parallel(std::stoi(argv[4]));
+	s.solve_sop_parallel(num_threads);
 	
 	end = std::chrono::system_clock::now();
 	std::chrono::duration<double> elapsed_time = end - start;
+	int best_solution_cost = s.best_solution_cost();
+	if(full_print){
+		cout << "best solution found" << std::endl;
+		print_solution_path(s.best_solution_path());
+		cout << "with cost: " << s.best_solution_cost() << std::endl;
+		std::cout << "time duration (seconds): " << elapsed_time.count() << std::endl;
+	} else {
+		cout << static_lower_bound << "," << nearest_neighbor_cost << "," << best_solution_cost << "," << elapsed_time.count() << std::endl;
+	}
 	
-	cout << "best solution found" << std::endl;
-	print_solution_path(s.best_solution_path());
-	cout << "with cost: " << s.best_solution_cost() << std::endl;
-	
-	std::cout << "time duration (seconds): " << elapsed_time.count() << std::endl;
 	return 0;
 }
 
