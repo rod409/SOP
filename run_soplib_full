@@ -5,12 +5,9 @@ program=./main
 hash_table_size=12582917
 thread_count=4
 
-echo "instance,static_lower_bound,nearest_neighbor_cost,best_solution_cost,time(sec)" > soplib_result/all_results.csv
 run_program()
 {
-	str="$($program soplib/$1.sop $time_limit $hash_table_size $thread_count)"
-	str="$1,$str"
-	echo "$str" >> soplib_result/all_results.csv
+	$program soplib/$1.sop $time_limit $hash_table_size full $thread_count > soplib_result/$1.txt
 }
 
 run_program R.200.100.1

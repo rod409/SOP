@@ -5,18 +5,14 @@ program=./main
 hash_table_size=12582917
 thread_count=4
 
-echo "instance,static_lower_bound,nearest_neighbor_cost,best_solution_cost,time(sec)" > mibench_result/all_results.csv
 run_program()
 {
-	str="$($program mibench/$1.sop $time_limit $hash_table_size $thread_count)"
-	str="$1,$str"
-	echo "$str" >> mibench_result/all_results.csv
+	$program mibench/$1.sop $time_limit $hash_table_size full $thread_count > mibench_result/$1.txt
 }
 
 run_program gsm.153.124
 run_program gsm.444.350
 run_program gsm.462.77
-
 run_program jpeg.1483.25
 run_program jpeg.3184.107
 run_program jpeg.3195.85
@@ -25,11 +21,9 @@ run_program jpeg.3203.135
 run_program jpeg.3740.15
 run_program jpeg.4154.36
 run_program jpeg.4753.54
-
 run_program susan.248.197
 run_program susan.260.158
 run_program susan.343.182
-
 run_program typeset.10835.26
 run_program typeset.12395.43
 run_program typeset.15087.23
