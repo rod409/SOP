@@ -15,6 +15,7 @@ using std::vector;
 using std::cout;
 
 void creat_graphs_from_file(string file, Digraph& g, Digraph& p);
+void remove_redundant_edges(Digraph& g, Digraph& p);
 void print_solution_path(const vector<Edge>& path);
 
 int main(int argc, char *argv[]){
@@ -31,6 +32,7 @@ int main(int argc, char *argv[]){
 	Digraph g;
 	Digraph p;
 	creat_graphs_from_file(argv[1], g, p);
+	remove_redundant_edges(g, p);
 	g.sort_edges();
 	Solver s = Solver(g, p);
 	s.set_time_limit_per_node(std::stoi(argv[2]));
@@ -97,6 +99,28 @@ void creat_graphs_from_file(string file, Digraph& g, Digraph& p){
 		}
 		++source;
 	}
+}
+
+void remove_redundant_edges(Digraph& g, Digraph& p){
+    for(int i = 0; i < p.node_count(); ++i){
+        const vector<Edge>& preceding_nodes = p.adj_outgoing(i);
+        for(int j = 0; j < preceding_nodes.size(); ++j){
+            vector<Edge> st;
+            st.push_back(preceding_nodes[j]);
+            while(!st.empty()){
+                Edge dependence_edge = st.back();
+                st.pop_back();
+                if(dependence_edge.source != i){
+                    g.remove_edge(dependence_edge.dest, i);
+                }
+                for(const Edge& e : p.adj_outgoing(dependence_edge.dest)){
+                    st.push_back(e);
+                }
+            }
+        }
+        
+        
+    }
 }
 
 void print_solution_path(const vector<Edge>& path){

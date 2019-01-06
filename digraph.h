@@ -16,11 +16,17 @@ class Digraph {
 		const std::vector<Edge>& sorted_adj_outgoing(int node) const;
 		const std::vector<Edge>& sorted_adj_incoming(int node) const;
 		void sort_edges();
+		std::vector<std::vector<int>> dense_hungarian() const;
+		int get_max_edge_weight() const;
+		void remove_edge(int source, int dest);
 	private:
+		void remove_outgoing_edge(std::vector<std::vector<Edge>>& edges, int source, int dest);
+		void remove_incoming_edge(std::vector<std::vector<Edge>>& edges, int source, int dest);
 		std::vector<std::vector<Edge>> outgoing_edges;
 		std::vector<std::vector<Edge>> incoming_edges;
 		std::vector<std::vector<Edge>> sorted_outgoing_edges;
 		std::vector<std::vector<Edge>> sorted_incoming_edges;
+		int max_edge_weight;
 		int num_nodes;
 };
 
