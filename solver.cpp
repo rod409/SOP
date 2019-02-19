@@ -10,6 +10,7 @@
 #include "digraph.h"
 #include "history_node.h"
 #include "hash_map.h"
+#include "hungarian.h"
 
 using std::vector;
 using std::pair;
@@ -23,12 +24,16 @@ static std::chrono::time_point<std::chrono::system_clock> start_time;
 
 HashMap<pair<vector<bool>, int>, HistoryNode> Solver::history;
 int Solver::max_edge_weight = 0;
+vector<vector<int>> Solver::cost_matrix;
 
 Solver::Solver(Digraph const * cost_graph, Digraph const * precedance_graph){
 	this->cost_graph = cost_graph;
 	this->precedance_graph = precedance_graph;
 	visited_nodes.assign(cost_graph->node_count(), false);
 	solution_weight = 0;
+	cost_matrix = this->cost_graph->dense_hungarian();
+	max_edge_weight = this->cost_graph->get_max_edge_weight();
+	hungarian_solver = Hungarian(cost_graph->node_count(), max_edge_weight, cost_matrix);
 }
 
 void Solver::set_time_limit_per_node(int limit){
@@ -88,6 +93,8 @@ void Solver::backtrack(int source){
 		Edge e = solution.back();
 		solution.pop_back();
 		visited_nodes[e.dest] = false;
+		hungarian_solver.undue_row(e.source, e.dest);
+		hungarian_solver.undue_column(e.dest, e.source);
 		last_visited_node = e.source;
 		solution_weight -= e.weight;
 	}
@@ -119,6 +126,8 @@ void Solver::reset_solution(){
 	solution.clear();
 	solution_weight = 0;
 	visited_nodes.assign(cost_graph->node_count(), false);
+	hungarian_solver = Hungarian(cost_matrix.size(), max_edge_weight, cost_matrix);
+	hungarian_solver.start();
 }
 
 int Solver::get_static_lower_bound(){
@@ -191,6 +200,9 @@ bool Solver::better_history(int cost, int current_node){
 			int improvement = p->second.prefix_cost - cost;
 			if(p->second.lower_bound - improvement < best_solution){
 				continue_search = true;
+                Edge last_edge = solution.back();
+				hungarian_solver.fix_row(last_edge.source, last_edge.dest);
+				hungarian_solver.fix_column(last_edge.dest, last_edge.source);
 				p->second.prefix_cost = cost;
 				p->second.lower_bound = p->second.lower_bound - improvement;
 			} else {
@@ -198,8 +210,12 @@ bool Solver::better_history(int cost, int current_node){
 				p->second.lower_bound = p->second.lower_bound - improvement;
 			}
 		}
-	} else {
-		int bound = edge_bound(current_node);
+	} else {	
+		Edge last_edge = solution.back();
+		hungarian_solver.fix_row(last_edge.source, last_edge.dest);
+		hungarian_solver.fix_column(last_edge.dest, last_edge.source);
+		hungarian_solver.solve_dynamic();
+		int bound = hungarian_solver.get_matching_cost()/2;
 		history.put(history_pair, HistoryNode(cost, bound));
 		continue_search = bound < best_solution;
 	}
@@ -208,7 +224,7 @@ bool Solver::better_history(int cost, int current_node){
 
 void Solver::nearest_neighbor(){
 	Edge current_node(0,0,0);
-	static_lower_bound = edge_bound(0);
+	static_lower_bound = hungarian_solver.start()/2;
 	reset_solution();
 	visited_nodes[0] = true;
 	solution.push_back(current_node);

@@ -1,9 +1,6 @@
 #include <vector>
 #include <algorithm>
 
-#include <iostream>
-#include <string>
-
 #include "digraph.h"
 #include "edge.h"
 
@@ -111,12 +108,6 @@ vector<vector<int>> Digraph::dense_hungarian() const{
 		for(Edge e : edges){
 			matrix[e.source][e.dest] = e.weight*2;
 		}
-	}
-	for(int i = 0; i < num_nodes; ++i){
-		for(int j = 0; j < num_nodes; ++j){
-		    std::cout << matrix[i][j]/2 << ",";
-	    }
-	    std::cout << std::endl;
 	}
 	return matrix;
 }

@@ -9,6 +9,7 @@
 #include "digraph.h"
 #include "history_node.h"
 #include "hash_map.h"
+#include "hungarian.h"
 
 namespace std
 {
@@ -49,6 +50,7 @@ class Solver {
 		bool better_history(int cost, int current_node);
 		static vector<vector<int>> cost_matrix;
 		static int max_edge_weight;
+		Hungarian hungarian_solver;
 };
 
 #endif
