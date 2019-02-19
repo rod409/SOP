@@ -54,6 +54,7 @@ class Solver {
 		void split_visits();
 		static vector<vector<int>> cost_matrix;
 		static int max_edge_weight;
+		Hungarian hungarian_solver;
 };
 
 #endif

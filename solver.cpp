@@ -14,6 +14,7 @@
 #include "history_node.h"
 #include "hash_map.h"
 #include "solver_state.h"
+#include "hungarian.h"
 
 using std::vector;
 using std::pair;
@@ -34,12 +35,16 @@ static int counter = 0;
 HashMap<pair<vector<bool>, int>, HistoryNode> Solver::history;
 int Solver::thread_count = 0;
 int Solver::max_edge_weight = 0;
+vector<vector<int>> Solver::cost_matrix;
 
 Solver::Solver(Digraph const * cost_graph, Digraph const * precedance_graph){
 	this->cost_graph = cost_graph;
 	this->precedance_graph = precedance_graph;
 	visited_nodes.assign(cost_graph->node_count(), false);
 	solution_weight = 0;
+	cost_matrix = this->cost_graph->dense_hungarian();
+	max_edge_weight = this->cost_graph->get_max_edge_weight();
+	hungarian_solver = Hungarian(cost_graph->node_count(), max_edge_weight, cost_matrix);
 }
 
 Solver::Solver(Digraph const * cost_graph, Digraph const * precedance_graph, Hungarian h){
@@ -47,6 +52,7 @@ Solver::Solver(Digraph const * cost_graph, Digraph const * precedance_graph, Hun
 	this->precedance_graph = precedance_graph;
 	visited_nodes.assign(cost_graph->node_count(), false);
 	solution_weight = 0;
+	hungarian_solver = h;
 }
 
 void Solver::set_time_limit_per_node(int limit){
@@ -141,6 +147,9 @@ void Solver::solve_sop(SolverState first_visit){
 			st.pop_back();
 			solution.push_back(last_edge);
 			solution_weight += last_edge.weight;
+			
+			//std::cout << "Branching from " << solution[solution.size()-1].source << " to " << solution[solution.size()-1].dest << std::endl;
+			
 			visited_nodes[last_edge.dest] = true;
 			last_visited_node = last_edge.dest;
 			if(solution.size() == solution_size){
@@ -181,6 +190,7 @@ void Solver::solve_sop(SolverState first_visit){
 		}
 		first_visits_mutex.unlock();
 	}
+	//std::cout << counter << std::endl;
 }
 
 void Solver::backtrack(int source){
@@ -188,6 +198,9 @@ void Solver::backtrack(int source){
 		Edge e = solution.back();
 		solution.pop_back();
 		visited_nodes[e.dest] = false;
+		//std::cout << "Backtracking from " << solution[solution.size()-1].dest << " to " << solution[solution.size()-1].source << std::endl;
+		hungarian_solver.undue_row(e.source, e.dest);
+		hungarian_solver.undue_column(e.dest, e.source);
 		last_visited_node = e.source;
 		solution_weight -= e.weight;
 	}
@@ -213,6 +226,7 @@ void Solver::update_best_solution(){
 	if(solution_weight < best_solution){
 		best_solution = solution_weight;
 		best_solution_nodes = solution;
+		//std::cout << "Found new solution with cost: " << best_solution << std::endl;
 	}
 	best_solution_mutex.unlock();
 }
@@ -222,9 +236,14 @@ void Solver::reset_solution(SolverState state){
 	solution = state.path;
 	solution_weight = state.cost;
 	visited_nodes.assign(cost_graph->node_count(), false);
+	hungarian_solver = Hungarian(cost_matrix.size(), max_edge_weight, cost_matrix);
+	hungarian_solver.start();
 	for(const Edge& e: state.path){
 		visited_nodes[e.dest] = true;
+		hungarian_solver.fix_row(e.source, e.dest);
+		hungarian_solver.fix_column(e.dest, e.source);
 	}
+	hungarian_solver.solve_dynamic();
 }
 
 int Solver::get_static_lower_bound(){
@@ -300,6 +319,8 @@ bool Solver::better_history(int cost, int current_node){
 			if(p.first->second.lower_bound - improvement < best_solution){
 				continue_search = true;
 				Edge last_edge = solution.back();
+				hungarian_solver.fix_row(last_edge.source, last_edge.dest);
+				hungarian_solver.fix_column(last_edge.dest, last_edge.source);
 				p.first->second.prefix_cost = cost;
 				p.first->second.lower_bound = p.first->second.lower_bound - improvement;
 			} else {
@@ -311,7 +332,12 @@ bool Solver::better_history(int cost, int current_node){
 			history.unlock_bucket(p.second);
 		}
 	} else {
-		int bound = edge_bound(current_node);
+		Edge last_edge = solution.back();
+		hungarian_solver.fix_row(last_edge.source, last_edge.dest);
+		hungarian_solver.fix_column(last_edge.dest, last_edge.source);
+		hungarian_solver.solve_dynamic();
+		int bound = hungarian_solver.get_matching_cost()/2;
+		//std::cout << "Calculated bound: " << bound << std::endl;
 		
 		p = history.find(history_pair);
 		if(p.first == history.end()){
@@ -322,7 +348,8 @@ bool Solver::better_history(int cost, int current_node){
 				int improvement = p.first->second.prefix_cost - cost;
 				if(p.first->second.lower_bound - improvement < best_solution){
 					continue_search = true;
-					Edge last_edge = solution.back();
+					hungarian_solver.fix_row(last_edge.source, last_edge.dest);
+					hungarian_solver.fix_column(last_edge.dest, last_edge.source);
 					p.first->second.prefix_cost = cost;
 					p.first->second.lower_bound = p.first->second.lower_bound - improvement;
 				} else {
@@ -340,7 +367,7 @@ bool Solver::better_history(int cost, int current_node){
 
 void Solver::nearest_neighbor(){
 	Edge current_node(0,0,0);
-	static_lower_bound = edge_bound(0);
+	static_lower_bound = hungarian_solver.start()/2;
 	reset_solution(SolverState(current_node, vector<Edge>(), 0));
 	visited_nodes[0] = true;
 	solution.push_back(current_node);
