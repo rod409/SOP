@@ -29,18 +29,20 @@ static std::chrono::time_point<std::chrono::system_clock> start_time;
 static mutex best_solution_mutex;
 static priority_queue<SolverState, vector<SolverState>, SolverStateCompare> first_visits;
 static mutex first_visits_mutex;
+static int counter = 0;
 
 HashMap<pair<vector<bool>, int>, HistoryNode> Solver::history;
 int Solver::thread_count = 0;
+int Solver::max_edge_weight = 0;
 
-Solver::Solver(const Digraph& cost_graph, const Digraph& precedance_graph){
-	this->cost_graph = &cost_graph;
-	this->precedance_graph = &precedance_graph;
-	visited_nodes.assign(cost_graph.node_count(), false);
+Solver::Solver(Digraph const * cost_graph, Digraph const * precedance_graph){
+	this->cost_graph = cost_graph;
+	this->precedance_graph = precedance_graph;
+	visited_nodes.assign(cost_graph->node_count(), false);
 	solution_weight = 0;
 }
 
-Solver::Solver(Digraph const * cost_graph, Digraph const * precedance_graph){
+Solver::Solver(Digraph const * cost_graph, Digraph const * precedance_graph, Hungarian h){
 	this->cost_graph = cost_graph;
 	this->precedance_graph = precedance_graph;
 	visited_nodes.assign(cost_graph->node_count(), false);
@@ -139,22 +141,19 @@ void Solver::solve_sop(SolverState first_visit){
 			st.pop_back();
 			solution.push_back(last_edge);
 			solution_weight += last_edge.weight;
-		
 			visited_nodes[last_edge.dest] = true;
 			last_visited_node = last_edge.dest;
-		
-			if(better_history(solution_weight, last_edge.dest)){
-				if(solution.size() == solution_size){
-					update_best_solution();
-					if(!st.empty()){
-						backtrack(st.back().source);
-					}
-		
-				} else {
-					for(const Edge& e : cost_graph->adj_outgoing(last_edge.dest)){
-						if(valid_node(e.dest)){
-							st.push_back(e);
-						}
+			if(solution.size() == solution_size){
+				update_best_solution();
+				if(!st.empty()){
+					backtrack(st.back().source);
+				}
+			}else if(better_history(solution_weight, last_edge.dest)){
+				++counter;
+				const vector<Edge>& sorted_outgoing = cost_graph->sorted_adj_outgoing(last_edge.dest);
+				for(int i = sorted_outgoing.size() - 1; i >= 0; --i){
+					if(valid_node(sorted_outgoing[i].dest)){
+						st.push_back(sorted_outgoing[i]);
 					}
 				}
 			} else {
@@ -254,8 +253,11 @@ int Solver::edge_bound(int current_node){
 					break;
 				}
 			}
-			if(min_out_weight > 0){
+			if(min_out_weight >= 0){
 				outgoing_edge_weights += min_out_weight;
+			} else {
+			    min_out_weight = max_edge_weight;
+			    outgoing_edge_weights += min_out_weight;
 			}
 			if(min_out_weight > largest_out_weight){
 				largest_out_weight = min_out_weight;
@@ -263,13 +265,16 @@ int Solver::edge_bound(int current_node){
 			if(i != current_node){
 				int min_in_weight = -1;
 				for(const Edge& e : cost_graph->sorted_adj_incoming(i)){
-					if((!visited_nodes[e.source] || e.source == i)){
+					if((!visited_nodes[e.source] || e.source == current_node)){
 						min_in_weight = e.weight;
 						break;
 					}
 				}
-				if(min_in_weight > 0){
+				if(min_in_weight >= 0){
 					incoming_edge_weights += min_in_weight;
+				} else {
+				    min_in_weight = max_edge_weight;
+				    incoming_edge_weights += min_in_weight;
 				}
 				if(min_in_weight > largest_in_weight){
 					largest_in_weight = min_in_weight;
@@ -279,7 +284,7 @@ int Solver::edge_bound(int current_node){
 		}
 	}
 	int outgoing_bound = solution_weight + outgoing_edge_weights - largest_out_weight;
-	int incoming_bound = solution_weight + incoming_edge_weights - largest_in_weight;
+	int incoming_bound = solution_weight + incoming_edge_weights;
 	return std::max(outgoing_bound, incoming_bound);
 }
 
@@ -294,6 +299,7 @@ bool Solver::better_history(int cost, int current_node){
 			
 			if(p.first->second.lower_bound - improvement < best_solution){
 				continue_search = true;
+				Edge last_edge = solution.back();
 				p.first->second.prefix_cost = cost;
 				p.first->second.lower_bound = p.first->second.lower_bound - improvement;
 			} else {
@@ -316,6 +322,7 @@ bool Solver::better_history(int cost, int current_node){
 				int improvement = p.first->second.prefix_cost - cost;
 				if(p.first->second.lower_bound - improvement < best_solution){
 					continue_search = true;
+					Edge last_edge = solution.back();
 					p.first->second.prefix_cost = cost;
 					p.first->second.lower_bound = p.first->second.lower_bound - improvement;
 				} else {

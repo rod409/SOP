@@ -9,6 +9,8 @@
 #include "history_node.h"
 #include "hash_map.h"
 #include "solver_state.h"
+#include "hungarian.h"
+#include "Hungarian3.h"
 
 namespace std
 {
@@ -22,8 +24,8 @@ namespace std
 
 class Solver {
 	public:
-		Solver(const Digraph& cost_graph, const Digraph& precedance_graph);
 		Solver(Digraph const * cost_graph, Digraph const * precedance_graph);
+		Solver(Digraph const * cost_graph, Digraph const * precedance_graph, Hungarian h);
 		void solve_sop_parallel(int nub_threads);
 		void solve_sop(SolverState first_visit);
 		void print_solution();
@@ -50,6 +52,8 @@ class Solver {
 		void backtrack(int source);
 		bool better_history(int cost, int current_node);
 		void split_visits();
+		static vector<vector<int>> cost_matrix;
+		static int max_edge_weight;
 };
 
 #endif
