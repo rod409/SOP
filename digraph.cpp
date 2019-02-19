@@ -1,6 +1,9 @@
 #include <vector>
 #include <algorithm>
 
+#include <iostream>
+#include <string>
+
 #include "digraph.h"
 #include "edge.h"
 
@@ -86,8 +89,8 @@ const vector<Edge>& Digraph::adj_incoming(int node) const{
 
 void Digraph::sort_edges(){
 	for(int i = 0; i < num_nodes; ++i){
-		std::sort(sorted_outgoing_edges[i].begin(), sorted_outgoing_edges[i].end());
-		std::sort(sorted_incoming_edges[i].begin(), sorted_incoming_edges[i].end());
+		std::stable_sort(sorted_outgoing_edges[i].begin(), sorted_outgoing_edges[i].end());
+		std::stable_sort(sorted_incoming_edges[i].begin(), sorted_incoming_edges[i].end());
 	}
 	
 }
@@ -109,10 +112,16 @@ vector<vector<int>> Digraph::dense_hungarian() const{
 			matrix[e.source][e.dest] = e.weight*2;
 		}
 	}
+	for(int i = 0; i < num_nodes; ++i){
+		for(int j = 0; j < num_nodes; ++j){
+		    std::cout << matrix[i][j]/2 << ",";
+	    }
+	    std::cout << std::endl;
+	}
 	return matrix;
 }
 
 int Digraph::get_max_edge_weight() const{
-	return max_edge_weight*2;
+	return max_edge_weight;
 }
 

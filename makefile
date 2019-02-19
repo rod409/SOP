@@ -10,6 +10,9 @@ debug: main
 release: CFLAGS += -O3
 release: main
 
+profile: CFLAGS += -Og -pg
+profile: main
+
 main: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^
 

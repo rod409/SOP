@@ -22,7 +22,7 @@ namespace std
 
 class Solver {
 	public:
-		Solver(const Digraph& cost_graph, const Digraph& precedance_graph);
+		Solver(Digraph const * cost_graph, Digraph const * precedance_graph);
 		void solve_sop();
 		void print_solution();
 		void nearest_neighbor();
@@ -47,6 +47,8 @@ class Solver {
 		int edge_bound(int current_node);
 		void backtrack(int source);
 		bool better_history(int cost, int current_node);
+		static vector<vector<int>> cost_matrix;
+		static int max_edge_weight;
 };
 
 #endif
