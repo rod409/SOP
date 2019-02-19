@@ -10,7 +10,6 @@
 #include "hash_map.h"
 #include "solver_state.h"
 #include "hungarian.h"
-#include "Hungarian3.h"
 
 namespace std
 {
