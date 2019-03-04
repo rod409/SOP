@@ -22,14 +22,25 @@ void remove_redundant_edge_successors(Digraph& g, Digraph& p);
 void print_solution_path(const vector<Edge>& path);
 
 int main(int argc, char *argv[]){
-	if(argc != 4 && argc != 5){
-		cout << "Usage: test <file name> <time limit> <hash table size> [mode]" << std::endl;
+	if(argc != 4 && argc != 5 && argc != 6){
+		std::cout << "Usage: ./main <file name> <time limit> <hash table size> [mode] [per_node]" << std::endl;
 		return 1;
 	}
 	bool full_print = false;
+	bool per_node_time_limit = false;
 	string full("full");
+	string per_node("per_node");
 	if(argc == 5 && full.compare(argv[4]) == 0){
 		full_print = true;
+	} else if(argc == 5 && per_node.compare(argv[4]) == 0){
+	    per_node_time_limit = true;
+	} else if(argc == 6){
+	    if(full.compare(argv[4]) == 0){
+	        full_print = true;
+	    }
+	    if(per_node.compare(argv[5]) == 0){
+	        per_node_time_limit = true;
+	    }
 	}
 		
 	Digraph g;
@@ -39,7 +50,7 @@ int main(int argc, char *argv[]){
 	remove_redundant_edges(g, p);
 	remove_redundant_edge_successors(g, p);
 	Solver s = Solver(&g, &p);
-	s.set_time_limit_per_node(std::stoi(argv[2]));
+	s.set_time_limit(std::stoi(argv[2]), per_node_time_limit);
 	s.set_hash_size(std::stoi(argv[3]));
 	
 	s.nearest_neighbor();

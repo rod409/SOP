@@ -36,8 +36,12 @@ Solver::Solver(Digraph const * cost_graph, Digraph const * precedance_graph){
 	hungarian_solver = Hungarian(cost_graph->node_count(), max_edge_weight, cost_matrix);
 }
 
-void Solver::set_time_limit_per_node(int limit){
-	time_limit = limit*cost_graph->node_count();
+void Solver::set_time_limit(int limit, bool per_node){
+	if(per_node){
+	    time_limit = limit*cost_graph->node_count();
+	} else {
+	    time_limit = limit;
+	}
 }
 
 void Solver::set_hash_size(size_t size){
@@ -83,6 +87,11 @@ void Solver::solve_sop(){
 						backtrack(st.back().source);
 					}
 				}
+				current_time = std::chrono::system_clock::now();
+			    std::chrono::duration<double> elapsed_time = current_time - start_time;
+			    if(elapsed_time.count() > time_limit){
+				    break;
+			    }
 			}
 		}
 	}
