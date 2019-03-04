@@ -29,7 +29,7 @@ class Solver {
 		void solve_sop(SolverState first_visit);
 		void print_solution();
 		void nearest_neighbor();
-		void set_time_limit_per_node(int limit);
+		void set_time_limit(int limit, bool per_node);
 		void set_hash_size(size_t size);
 		int get_static_lower_bound();
 		int best_solution_cost();

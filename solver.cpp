@@ -55,8 +55,13 @@ Solver::Solver(Digraph const * cost_graph, Digraph const * precedance_graph, Hun
 	hungarian_solver = h;
 }
 
-void Solver::set_time_limit_per_node(int limit){
-	time_limit = limit*cost_graph->node_count();
+void Solver::set_time_limit(int limit, bool per_node){
+	if(per_node){
+	    time_limit = limit*cost_graph->node_count();
+	} else {
+	    time_limit = limit;
+	}
+	
 }
 
 void Solver::set_hash_size(size_t size){
