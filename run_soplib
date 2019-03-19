@@ -1,11 +1,11 @@
 #!/bin/bash
 
-time_limit=2
+time_limit=600
 program=./main
 hash_table_size=12582917
 thread_count=4
 
-echo "instance,static_lower_bound,nearest_neighbor_cost,best_solution_cost,time(sec)" > soplib_result/all_results.csv
+echo "instance,static_lower_bound,nearest_neighbor_cost,best_solution_cost,time(sec),enumerated0,enumerated1,enumerated2,enumerated3,bounds0,bounds1,bounds2,bounds3" > soplib_result/all_results.csv
 run_program()
 {
 	str="$($program soplib/$1.sop $time_limit $hash_table_size $thread_count)"
@@ -14,56 +14,92 @@ run_program()
 }
 
 run_program R.200.100.1
+sleep 120
 run_program R.200.100.15
+sleep 120
 run_program R.200.100.30
 run_program R.200.100.60
+sleep 120
 run_program R.200.1000.1
+sleep 120
 run_program R.200.1000.15
+sleep 120
 run_program R.200.1000.30
 run_program R.200.1000.60
 
+sleep 120
 run_program R.300.100.1
+sleep 120
 run_program R.300.100.15
+sleep 120
 run_program R.300.100.30
 run_program R.300.100.60
+sleep 120
 run_program R.300.1000.1
+sleep 120
 run_program R.300.1000.15
+sleep 120
 run_program R.300.1000.30
 run_program R.300.1000.60
 
+sleep 120
 run_program R.400.100.1
+sleep 120
 run_program R.400.100.15
+sleep 120
 run_program R.400.100.30
+sleep 120
 run_program R.400.100.60
+sleep 120
 run_program R.400.1000.1
+sleep 120
 run_program R.400.1000.15
+sleep 120
 run_program R.400.1000.30
 run_program R.400.1000.60
 
+sleep 120
 run_program R.500.100.1
+sleep 120
 run_program R.500.100.15
+sleep 120
 run_program R.500.100.30
 run_program R.500.100.60
+sleep 120
 run_program R.500.1000.1
+sleep 120
 run_program R.500.1000.15
+sleep 120
 run_program R.500.1000.30
 run_program R.500.1000.60
 
+sleep 120
 run_program R.600.100.1
+sleep 120
 run_program R.600.100.15
+sleep 120
 run_program R.600.100.30
 run_program R.600.100.60
+sleep 120
 run_program R.600.1000.1
+sleep 120
 run_program R.600.1000.15
+sleep 120
 run_program R.600.1000.30
 run_program R.600.1000.60
 
+sleep 120
 run_program R.700.100.1
+sleep 120
 run_program R.700.100.15
+sleep 120
 run_program R.700.100.30
 run_program R.700.100.60
+sleep 120
 run_program R.700.1000.1
+sleep 120
 run_program R.700.1000.15
+sleep 120
 run_program R.700.1000.30
 run_program R.700.1000.60
 

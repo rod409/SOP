@@ -1,11 +1,11 @@
 #!/bin/bash
 
-time_limit=3
+time_limit=600
 program=./main
 hash_table_size=12582917
 thread_count=4
 
-echo "instance,static_lower_bound,nearest_neighbor_cost,best_solution_cost,time(sec)" > tsplib_result/all_results.csv
+echo "instance,static_lower_bound,nearest_neighbor_cost,best_solution_cost,time(sec),enumerated0,enumerated1,enumerated2,enumerated3,bounds0,bounds1,bounds2,bounds3" > tsplib_result/all_results.csv
 run_program()
 {
 	str="$($program tsplib/$1.sop $time_limit $hash_table_size $thread_count)"
@@ -15,50 +15,85 @@ run_program()
 
 run_program br17.10
 run_program br17.12
+sleep 120
 
 run_program ESC07
 run_program ESC11
 run_program ESC12
 run_program ESC25
+sleep 120
 run_program ESC47
 run_program ESC63
+sleep 120
 run_program ESC78
+sleep 120
 
 run_program ft53.1
+sleep 120
 run_program ft53.2
+sleep 120
 run_program ft53.3
+sleep 120
 run_program ft53.4
+sleep 120
 run_program ft70.1
+sleep 120
 run_program ft70.2
+sleep 120
 run_program ft70.3
+sleep 120
 run_program ft70.4
+sleep 120
 
 run_program rbg048a
+sleep 120
 run_program rbg050c
+sleep 120
 run_program rbg109a
+sleep 120
 run_program rbg150a
+sleep 120
 run_program rbg174a
+sleep 120
 run_program rbg253a
+sleep 120
 run_program rbg323a
+sleep 120
 run_program rbg341a
+sleep 120
 run_program rbg358a
+sleep 120
 run_program rbg378a
+sleep 120
 
 run_program kro124p.1
+sleep 120
 run_program kro124p.2
+sleep 120
 run_program kro124p.3
+sleep 120
 run_program kro124p.4
+sleep 120
 
 run_program p43.1
+sleep 120
 run_program p43.2
+sleep 120
 run_program p43.3
+sleep 120
 run_program p43.4
+sleep 120
 
 run_program prob.100
+sleep 120
 run_program prob.42
+sleep 120
 
 run_program ry48p.1
+sleep 120
 run_program ry48p.2
+sleep 120
 run_program ry48p.3
+sleep 120
 run_program ry48p.4
 
