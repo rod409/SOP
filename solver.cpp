@@ -4,6 +4,9 @@
 #include <chrono>
 #include <algorithm>
 #include <cmath>
+#include <atomic>
+
+#include <iostream>
 
 #include "solver.h"
 #include "edge.h"
@@ -21,7 +24,6 @@ static int static_lower_bound = 0;
 
 static int time_limit = 100;
 static std::chrono::time_point<std::chrono::system_clock> start_time;
-
 HashMap<pair<vector<bool>, int>, HistoryNode> Solver::history;
 int Solver::max_edge_weight = 0;
 vector<vector<int>> Solver::cost_matrix;
@@ -34,6 +36,8 @@ Solver::Solver(Digraph const * cost_graph, Digraph const * precedance_graph){
 	cost_matrix = this->cost_graph->dense_hungarian();
 	max_edge_weight = this->cost_graph->get_max_edge_weight();
 	hungarian_solver = Hungarian(cost_graph->node_count(), max_edge_weight, cost_matrix);
+	enumerated_nodes = 0;
+	bound_calculations = 0;
 }
 
 void Solver::set_time_limit(int limit, bool per_node){
@@ -69,7 +73,7 @@ void Solver::solve_sop(){
 				
 				visited_nodes[last_edge.dest] = true;
 				last_visited_node = last_edge.dest;
-				
+				++enumerated_nodes;
 				if(solution.size() == solution_size){
                    update_best_solution();
                    if(!st.empty()){
@@ -225,6 +229,7 @@ bool Solver::better_history(int cost, int current_node){
 		hungarian_solver.fix_column(last_edge.dest, last_edge.source);
 		hungarian_solver.solve_dynamic();
 		int bound = hungarian_solver.get_matching_cost()/2;
+		++bound_calculations;
 		history.put(history_pair, HistoryNode(cost, bound));
 		continue_search = bound < best_solution;
 	}
@@ -256,5 +261,13 @@ void Solver::nearest_neighbor(){
 		best_solution = solution_weight;
 		best_solution_nodes = solution;
 	}
+}
+
+unsigned long int Solver::get_enumerated_nodes(){
+    return enumerated_nodes;
+}
+
+unsigned long int Solver::get_bound_calculations(){
+    return bound_calculations;
 }
 

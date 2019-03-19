@@ -76,8 +76,11 @@ int main(int argc, char *argv[]){
 		print_solution_path(s.best_solution_path());
 		cout << "with cost: " << best_solution_cost << std::endl;
 		cout << "time duration (seconds): " << elapsed_time.count() << std::endl;
+		std::cout << "enumerated nodes: " << s.get_enumerated_nodes() << std::endl;
+        std::cout << "calculated bounds: " << s.get_bound_calculations() << std::endl;
 	} else {
-		cout << static_lower_bound << "," << nearest_neighbor_cost << "," << best_solution_cost << "," << elapsed_time.count() << std::endl;
+		cout << static_lower_bound << "," << nearest_neighbor_cost << "," << best_solution_cost << "," << elapsed_time.count();
+		 cout << "," << s.get_enumerated_nodes() << "," << s.get_bound_calculations() << std::endl;
 	}
 	
 	return 0;

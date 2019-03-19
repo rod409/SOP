@@ -32,6 +32,8 @@ class Solver {
 		int get_static_lower_bound();
 		int best_solution_cost();
 		std::vector<Edge> best_solution_path();
+		unsigned long int get_enumerated_nodes();
+		unsigned long int get_bound_calculations();
 	private:
 		std::vector<Edge> solution;
 		int solution_weight;
@@ -51,6 +53,9 @@ class Solver {
 		static vector<vector<int>> cost_matrix;
 		static int max_edge_weight;
 		Hungarian hungarian_solver;
+		int thread_id;
+		unsigned long int enumerated_nodes;
+		unsigned long int bound_calculations;
 };
 
 #endif
