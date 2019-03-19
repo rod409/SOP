@@ -3,6 +3,8 @@
 
 #include <vector>
 #include <utility>
+#include <atomic>
+#include <thread>
 
 #include "edge.h"
 #include "digraph.h"
@@ -26,7 +28,7 @@ class Solver {
 		Solver(Digraph const * cost_graph, Digraph const * precedance_graph);
 		Solver(Digraph const * cost_graph, Digraph const * precedance_graph, Hungarian h);
 		void solve_sop_parallel(int nub_threads);
-		void solve_sop(SolverState first_visit);
+		void solve_sop(SolverState first_visit, int thread_id);
 		void print_solution();
 		void nearest_neighbor();
 		void set_time_limit(int limit, bool per_node);
@@ -34,6 +36,8 @@ class Solver {
 		int get_static_lower_bound();
 		int best_solution_cost();
 		std::vector<Edge> best_solution_path();
+		std::vector<int> get_enumerated_nodes();
+		std::vector<int> get_bound_calculations();
 	private:
 		std::vector<Edge> solution;
 		int solution_weight;
@@ -54,6 +58,10 @@ class Solver {
 		static vector<vector<int>> cost_matrix;
 		static int max_edge_weight;
 		Hungarian hungarian_solver;
+		SolverState generate_solver_state(Edge starting_edge);
+		int thread_id;
+		static vector<int> enumerated_nodes;
+		static vector<int> bound_calculations;
 };
 
 #endif

@@ -78,13 +78,26 @@ int main(int argc, char *argv[]){
 	end = std::chrono::system_clock::now();
 	std::chrono::duration<double> elapsed_time = end - start;
 	int best_solution_cost = s.best_solution_cost();
+	vector<int> enumerated_nodes = s.get_enumerated_nodes();
+	vector<int> bound_calculations = s.get_bound_calculations();
 	if(full_print){
 		cout << "best solution found" << std::endl;
 		print_solution_path(s.best_solution_path());
 		cout << "with cost: " << s.best_solution_cost() << std::endl;
 		std::cout << "time duration (seconds): " << elapsed_time.count() << std::endl;
+		for(int i = 0; i < num_threads; ++i){
+            std::cout << "enumerated nodes: " << enumerated_nodes[i] << std::endl;
+            std::cout << "calculated bounds: " << bound_calculations[i] << std::endl;
+        }
 	} else {
-		cout << static_lower_bound << "," << nearest_neighbor_cost << "," << best_solution_cost << "," << elapsed_time.count() << std::endl;
+		cout << static_lower_bound << "," << nearest_neighbor_cost << "," << best_solution_cost << "," << elapsed_time.count();
+		for(int i = 0; i < num_threads; ++i){
+		    cout << "," << enumerated_nodes[i];
+		}
+		for(int i = 0; i < num_threads; ++i){
+		    cout << "," << bound_calculations[i];
+		}
+		 cout << std::endl;
 	}
 	
 	return 0;

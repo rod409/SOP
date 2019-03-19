@@ -7,6 +7,9 @@
 #include <mutex>
 #include <queue>
 #include <cmath>
+#include <atomic>
+
+#include <iostream>
 
 #include "solver.h"
 #include "edge.h"
@@ -21,6 +24,7 @@ using std::pair;
 using std::thread;
 using std::mutex;
 using std::priority_queue;
+using std::atomic;
 
 static int best_solution = std::numeric_limits<int>::max();
 static vector<Edge> best_solution_nodes;
@@ -30,9 +34,10 @@ static std::chrono::time_point<std::chrono::system_clock> start_time;
 static mutex best_solution_mutex;
 static priority_queue<SolverState, vector<SolverState>, SolverStateCompare> first_visits;
 static mutex first_visits_mutex;
-static int counter = 0;
 
 HashMap<pair<vector<bool>, int>, HistoryNode> Solver::history;
+vector<int> Solver::enumerated_nodes;
+vector<int> Solver::bound_calculations;
 int Solver::thread_count = 0;
 int Solver::max_edge_weight = 0;
 vector<vector<int>> Solver::cost_matrix;
@@ -45,6 +50,7 @@ Solver::Solver(Digraph const * cost_graph, Digraph const * precedance_graph){
 	cost_matrix = this->cost_graph->dense_hungarian();
 	max_edge_weight = this->cost_graph->get_max_edge_weight();
 	hungarian_solver = Hungarian(cost_graph->node_count(), max_edge_weight, cost_matrix);
+	//spawned_threads = vector<thread>(0);
 }
 
 Solver::Solver(Digraph const * cost_graph, Digraph const * precedance_graph, Hungarian h){
@@ -53,6 +59,7 @@ Solver::Solver(Digraph const * cost_graph, Digraph const * precedance_graph, Hun
 	visited_nodes.assign(cost_graph->node_count(), false);
 	solution_weight = 0;
 	hungarian_solver = h;
+	//spawned_threads = vector<thread>(0);
 }
 
 void Solver::set_time_limit(int limit, bool per_node){
@@ -73,6 +80,8 @@ void Solver::set_hash_size(size_t size){
 void Solver::solve_sop_parallel(int num_threads){
 	start_time = std::chrono::system_clock::now();
 	thread_count = num_threads;
+	enumerated_nodes.assign(num_threads, 0);
+	bound_calculations.assign(num_threads, 0);
 	for(int i = 0; i < cost_graph->node_count(); ++i){
 		solution.clear();
 		solution.push_back(Edge(i, i, 0));
@@ -87,14 +96,14 @@ void Solver::solve_sop_parallel(int num_threads){
 			vector<Solver> solvers;
 			first_visits_mutex.lock();
 			for(int j = 0; j < thread_count; ++j){
-				solvers.push_back(Solver(cost_graph, precedance_graph));
+				solvers.push_back(std::move(Solver(cost_graph, precedance_graph)));
 				if(first_visits.size() < thread_count){
 					split_visits();
 				}
 				if(!first_visits.empty()){
 					SolverState first_visit = first_visits.top();
 					first_visits.pop();
-					solver_threads[j] = thread(&Solver::solve_sop, solvers[j], first_visit);
+					solver_threads[j] = thread(&Solver::solve_sop, std::move(solvers[j]), first_visit, j);
 				}
 			}
 			first_visits_mutex.unlock();
@@ -139,10 +148,12 @@ void Solver::split_visits(){
 	}
 }
 
-void Solver::solve_sop(SolverState first_visit){
+void Solver::solve_sop(SolverState first_visit, int thread_id){
 	std::chrono::time_point<std::chrono::system_clock> current_time;
+	this->thread_id = thread_id;
 	int solution_size = cost_graph->node_count();
 	bool start_new_search = true;
+	bool create_thread = true;
 	while(start_new_search){
 		vector<Edge> st;
 		reset_solution(first_visit);
@@ -157,13 +168,13 @@ void Solver::solve_sop(SolverState first_visit){
 			
 			visited_nodes[last_edge.dest] = true;
 			last_visited_node = last_edge.dest;
+			enumerated_nodes[thread_id] += 1;
 			if(solution.size() == solution_size){
 				update_best_solution();
 				if(!st.empty()){
 					backtrack(st.back().source);
 				}
 			}else if(better_history(solution_weight, last_edge.dest)){
-				++counter;
 				const vector<Edge>& sorted_outgoing = cost_graph->sorted_adj_outgoing(last_edge.dest);
 				for(int i = sorted_outgoing.size() - 1; i >= 0; --i){
 					if(valid_node(sorted_outgoing[i].dest)){
@@ -195,7 +206,6 @@ void Solver::solve_sop(SolverState first_visit){
 		}
 		first_visits_mutex.unlock();
 	}
-	//std::cout << counter << std::endl;
 }
 
 void Solver::backtrack(int source){
@@ -213,6 +223,20 @@ void Solver::backtrack(int source){
 
 bool Solver::valid_node(int node){
 	return !visited_nodes[node] && predecessors_visited(node);
+}
+
+SolverState Solver::generate_solver_state(Edge next_edge){
+    int source = next_edge.source;
+    vector<Edge> path;
+    int cost = 0;
+    int i = 0;
+    while(solution[i].dest != source){
+		path.push_back(solution[i]);
+		cost += solution[i].weight;
+		Edge e = solution.back();
+		++i;
+	}
+	return SolverState(next_edge, path, cost);
 }
 
 bool Solver::predecessors_visited(int node){
@@ -342,6 +366,7 @@ bool Solver::better_history(int cost, int current_node){
 		hungarian_solver.fix_column(last_edge.dest, last_edge.source);
 		hungarian_solver.solve_dynamic();
 		int bound = hungarian_solver.get_matching_cost()/2;
+		bound_calculations[thread_id] += 1;
 		//std::cout << "Calculated bound: " << bound << std::endl;
 		
 		p = history.find(history_pair);
@@ -395,5 +420,13 @@ void Solver::nearest_neighbor(){
 		best_solution = solution_weight;
 		best_solution_nodes = solution;
 	}
+}
+
+vector<int> Solver::get_enumerated_nodes(){
+    return enumerated_nodes;
+}
+
+vector<int> Solver::get_bound_calculations(){
+    return bound_calculations;
 }
 
