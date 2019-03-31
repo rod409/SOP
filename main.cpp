@@ -78,8 +78,8 @@ int main(int argc, char *argv[]){
 	end = std::chrono::system_clock::now();
 	std::chrono::duration<double> elapsed_time = end - start;
 	int best_solution_cost = s.best_solution_cost();
-	vector<int> enumerated_nodes = s.get_enumerated_nodes();
-	vector<int> bound_calculations = s.get_bound_calculations();
+	vector<unsigned long int> enumerated_nodes = s.get_enumerated_nodes();
+	vector<unsigned long int> bound_calculations = s.get_bound_calculations();
 	if(full_print){
 		cout << "best solution found" << std::endl;
 		print_solution_path(s.best_solution_path());

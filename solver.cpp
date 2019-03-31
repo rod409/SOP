@@ -36,8 +36,8 @@ static priority_queue<SolverState, vector<SolverState>, SolverStateCompare> firs
 static mutex first_visits_mutex;
 
 HashMap<pair<vector<bool>, int>, HistoryNode> Solver::history;
-vector<int> Solver::enumerated_nodes;
-vector<int> Solver::bound_calculations;
+vector<unsigned long int> Solver::enumerated_nodes;
+vector<unsigned long int> Solver::bound_calculations;
 int Solver::thread_count = 0;
 int Solver::max_edge_weight = 0;
 vector<vector<int>> Solver::cost_matrix;
@@ -422,11 +422,11 @@ void Solver::nearest_neighbor(){
 	}
 }
 
-vector<int> Solver::get_enumerated_nodes(){
+vector<unsigned long int> Solver::get_enumerated_nodes(){
     return enumerated_nodes;
 }
 
-vector<int> Solver::get_bound_calculations(){
+vector<unsigned long int> Solver::get_bound_calculations(){
     return bound_calculations;
 }
 

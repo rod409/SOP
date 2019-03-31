@@ -36,8 +36,8 @@ class Solver {
 		int get_static_lower_bound();
 		int best_solution_cost();
 		std::vector<Edge> best_solution_path();
-		std::vector<int> get_enumerated_nodes();
-		std::vector<int> get_bound_calculations();
+		std::vector<unsigned long int> get_enumerated_nodes();
+		std::vector<unsigned long int> get_bound_calculations();
 	private:
 		std::vector<Edge> solution;
 		int solution_weight;
@@ -60,8 +60,8 @@ class Solver {
 		Hungarian hungarian_solver;
 		SolverState generate_solver_state(Edge starting_edge);
 		int thread_id;
-		static vector<int> enumerated_nodes;
-		static vector<int> bound_calculations;
+		static vector<unsigned long int> enumerated_nodes;
+		static vector<unsigned long int> bound_calculations;
 };
 
 #endif
