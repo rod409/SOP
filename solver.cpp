@@ -42,12 +42,15 @@ int Solver::thread_count = 0;
 int Solver::max_edge_weight = 0;
 vector<vector<int>> Solver::cost_matrix;
 
+void Solver::set_cost_matrix(vector<vector<int>> matrix){
+    cost_matrix = matrix;
+}
+
 Solver::Solver(Digraph const * cost_graph, Digraph const * precedance_graph){
 	this->cost_graph = cost_graph;
 	this->precedance_graph = precedance_graph;
 	visited_nodes.assign(cost_graph->node_count(), false);
 	solution_weight = 0;
-	cost_matrix = this->cost_graph->dense_hungarian();
 	max_edge_weight = this->cost_graph->get_max_edge_weight();
 	hungarian_solver = Hungarian(cost_graph->node_count(), max_edge_weight, cost_matrix);
 	//spawned_threads = vector<thread>(0);

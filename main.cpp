@@ -49,10 +49,10 @@ int main(int argc, char *argv[]){
 	g.sort_edges();
 	remove_redundant_edges(g, p);
 	remove_redundant_edge_successors(g, p);
+	Solver::set_cost_matrix(g.dense_hungarian());
 	Solver s = Solver(&g, &p);
 	s.set_time_limit(std::stoi(argv[2]), per_node_time_limit);
 	s.set_hash_size(std::stoi(argv[3]));
-	
 	s.nearest_neighbor();
 	int static_lower_bound = s.get_static_lower_bound();
 	int nearest_neighbor_cost = s.best_solution_cost();

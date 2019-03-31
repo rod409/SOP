@@ -38,6 +38,7 @@ class Solver {
 		std::vector<Edge> best_solution_path();
 		std::vector<unsigned long int> get_enumerated_nodes();
 		std::vector<unsigned long int> get_bound_calculations();
+		static void set_cost_matrix(vector<vector<int>> matrix);
 	private:
 		std::vector<Edge> solution;
 		int solution_weight;
