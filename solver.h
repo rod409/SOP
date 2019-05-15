@@ -59,6 +59,9 @@ class Solver {
 		static vector<vector<int>> cost_matrix;
 		static int max_edge_weight;
 		Hungarian hungarian_solver;
+		static std::atomic<int> active_threads;
+		static std::atomic<bool> wait_thread;
+		//vector<std::thread> spawned_threads;
 		SolverState generate_solver_state(Edge starting_edge);
 		int thread_id;
 		static vector<unsigned long int> enumerated_nodes;

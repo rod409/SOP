@@ -8,6 +8,7 @@
 #include <queue>
 #include <cmath>
 #include <atomic>
+#include <condition_variable>
 
 #include <iostream>
 
@@ -25,6 +26,8 @@ using std::thread;
 using std::mutex;
 using std::priority_queue;
 using std::atomic;
+using std::unique_lock;
+using std::condition_variable;
 
 static int best_solution = std::numeric_limits<int>::max();
 static vector<Edge> best_solution_nodes;
@@ -42,6 +45,13 @@ int Solver::thread_count = 0;
 int Solver::max_edge_weight = 0;
 vector<vector<int>> Solver::cost_matrix;
 
+//static vector<bool> thread_active;
+static int active_thread_count = 1;
+static condition_variable cv;
+static mutex cv_lock;
+static mutex active_lock;
+static volatile bool terminate = false;
+
 void Solver::set_cost_matrix(vector<vector<int>> matrix){
     cost_matrix = matrix;
 }
@@ -54,6 +64,7 @@ Solver::Solver(Digraph const * cost_graph, Digraph const * precedance_graph){
 	max_edge_weight = this->cost_graph->get_max_edge_weight();
 	hungarian_solver = Hungarian(cost_graph->node_count(), max_edge_weight, cost_matrix);
 	//spawned_threads = vector<thread>(0);
+	this->thread_id = -1;
 }
 
 Solver::Solver(Digraph const * cost_graph, Digraph const * precedance_graph, Hungarian h){
@@ -83,6 +94,8 @@ void Solver::set_hash_size(size_t size){
 void Solver::solve_sop_parallel(int num_threads){
 	start_time = std::chrono::system_clock::now();
 	thread_count = num_threads;
+	active_thread_count = num_threads;
+	//thread_active.assign(num_threads, true);
 	enumerated_nodes.assign(num_threads, 0);
 	bound_calculations.assign(num_threads, 0);
 	for(int i = 0; i < cost_graph->node_count(); ++i){
@@ -167,8 +180,6 @@ void Solver::solve_sop(SolverState first_visit, int thread_id){
 			solution.push_back(last_edge);
 			solution_weight += last_edge.weight;
 			
-			//std::cout << "Branching from " << solution[solution.size()-1].source << " to " << solution[solution.size()-1].dest << std::endl;
-			
 			visited_nodes[last_edge.dest] = true;
 			last_visited_node = last_edge.dest;
 			enumerated_nodes[thread_id] += 1;
@@ -187,11 +198,32 @@ void Solver::solve_sop(SolverState first_visit, int thread_id){
 			} else {
 				if(!st.empty()){
 					backtrack(st.back().source);
+					if(create_thread && st.size() > 1 && active_thread_count < thread_count){
+					    Edge next_edge = st.front();
+					    SolverState state = generate_solver_state(next_edge);
+					    if((active_thread_count < thread_count) && ((cost_graph->node_count() - state.path.size()) > cost_graph->node_count()/2)){
+					        st.erase(st.begin());
+					        first_visits_mutex.lock();
+					        first_visits.push(state);
+					        first_visits_mutex.unlock();
+					    } else {
+					        if(active_thread_count < thread_count){
+					            create_thread = false;
+					        }
+					        
+					    }
+					    cv.notify_all();
+					}
 				}
 			}
 			current_time = std::chrono::system_clock::now();
 			std::chrono::duration<double> elapsed_time = current_time - start_time;
 			if(elapsed_time.count() > time_limit){
+				unique_lock<mutex> lk(cv_lock);
+				terminate = true;
+				lk.unlock();
+				start_new_search = false;
+		        cv.notify_all();
 				break;
 			}
 		}
@@ -208,6 +240,42 @@ void Solver::solve_sop(SolverState first_visit, int thread_id){
 			start_new_search = false;
 		}
 		first_visits_mutex.unlock();
+		if(start_new_search == false){
+		    active_lock.lock();
+		    --active_thread_count;
+		    if(active_thread_count == 0){
+		        unique_lock<mutex> lk(cv_lock);
+		        terminate = true;
+		        lk.unlock();
+		        cv.notify_all();
+		    }
+		    active_lock.unlock();
+		    if(!terminate){
+		        unique_lock<mutex> lk(cv_lock);
+		        cv.wait(lk, []{return terminate;});
+		    }
+		    if(!terminate){
+		        first_visits_mutex.lock();
+		        if(!first_visits.empty()){
+			        if(first_visits.size() < thread_count){
+				        split_visits();
+			        }
+			        if(!first_visits.empty()){
+				        first_visit = first_visits.top();
+				        first_visits.pop();
+				        start_new_search = true;
+				        active_lock.lock();
+				        ++active_thread_count;
+				        active_lock.unlock();
+			        }
+		        } else {
+			        start_new_search = false;
+		        }
+		        first_visits_mutex.unlock();
+		    } else {
+		        start_new_search = false;
+		    }
+		}
 	}
 }
 
@@ -216,7 +284,6 @@ void Solver::backtrack(int source){
 		Edge e = solution.back();
 		solution.pop_back();
 		visited_nodes[e.dest] = false;
-		//std::cout << "Backtracking from " << solution[solution.size()-1].dest << " to " << solution[solution.size()-1].source << std::endl;
 		hungarian_solver.undue_row(e.source, e.dest);
 		hungarian_solver.undue_column(e.dest, e.source);
 		last_visited_node = e.source;
@@ -233,7 +300,7 @@ SolverState Solver::generate_solver_state(Edge next_edge){
     vector<Edge> path;
     int cost = 0;
     int i = 0;
-    while(solution[i].dest != source){
+    while(solution[i].source != source){
 		path.push_back(solution[i]);
 		cost += solution[i].weight;
 		Edge e = solution.back();
@@ -258,7 +325,6 @@ void Solver::update_best_solution(){
 	if(solution_weight < best_solution){
 		best_solution = solution_weight;
 		best_solution_nodes = solution;
-		//std::cout << "Found new solution with cost: " << best_solution << std::endl;
 	}
 	best_solution_mutex.unlock();
 }
