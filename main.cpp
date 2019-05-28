@@ -5,6 +5,8 @@
 #include <iostream>
 #include <chrono>
 #include <unordered_set>
+#include <sys/types.h>
+#include <dirent.h>
 
 #include "digraph.h"
 #include "solver.h"
@@ -20,6 +22,14 @@ void creat_graphs_from_file(string file, Digraph& g, Digraph& p);
 void remove_redundant_edges(Digraph& g, Digraph& p);
 void remove_redundant_edge_successors(Digraph& g, Digraph& p);
 void print_solution_path(const vector<Edge>& path);
+
+struct tour {
+    vector<Edge> path;
+    int cost;
+};
+
+struct tour read_tour_file(string file, const Digraph& g);
+string match_file(const string& directory, string pattern);
 
 int main(int argc, char *argv[]){
 	if(argc != 4 && argc != 5 && argc != 6){
@@ -53,7 +63,32 @@ int main(int argc, char *argv[]){
 	s.set_time_limit(std::stoi(argv[2]), per_node_time_limit);
 	s.set_hash_size(std::stoi(argv[3]));
 	
-	s.nearest_neighbor();
+	string file_name = argv[1];
+    string delimiter = "/";
+    size_t pos = file_name.find(delimiter);
+    size_t pos_end = file_name.find(".sop");
+    string folder = file_name.substr(0, pos);
+    string problem = file_name.substr(pos+1, pos_end-pos-1);
+    
+    string path = "TOURS";
+    if(folder == "tsplib"){
+        path += "/TSPLIB";
+    } else if(folder == "soplib"){
+        path += "/SOPLIB";
+    } else if(folder == "mibench"){
+        path += "/COMPILERS";
+    } else {
+        path = "";
+    }
+    
+    struct tour start_tour;
+    if(path != ""){
+        string matching_file = match_file(path, problem);
+        start_tour = read_tour_file(path + "/" + matching_file, g);
+        s.set_initial_solution(start_tour.path, start_tour.cost);
+    }
+    s.nearest_neighbor();
+    		
 	int static_lower_bound = s.get_static_lower_bound();
 	int nearest_neighbor_cost = s.best_solution_cost();
 	if(full_print){
@@ -174,6 +209,55 @@ void print_solution_path(const vector<Edge>& path){
 		cout << e.dest << " -> ";
 	}
 	cout << std::endl;
+}
+
+struct tour read_tour_file(string file, const Digraph& g){
+    vector<vector<int>> cost_matrix = g.dense_hungarian();
+    struct tour t;
+    t.path = vector<Edge>();
+    t.cost = 0;
+    ifstream tour_file(file);
+	if(tour_file.fail()){
+		std::cout << "failed to open file at " << file << std::endl;
+		exit(1);
+	}
+	string line;
+	int row = 0;
+	int prev = 0;
+	int next = 0;
+	bool set_size = true;
+	while(getline(tour_file, line)){
+		if(row > 5 && line != "EOF"){
+		    next = std::stoi(line);
+		    next -= 1;
+		    if(next >= 0){
+		        int weight = cost_matrix[prev][next]/2;
+		        if(next == prev){
+		            weight = 0;
+		        }
+		        t.path.push_back(Edge(prev, next, weight));
+		        t.cost += weight;
+		    }
+		    prev = next;
+		}
+		++row;
+	}
+	return t;
+}
+
+string match_file(const string& directory, string pattern){
+    string file_match = "";
+    DIR* dirp = opendir(directory.c_str());
+    struct dirent * dp;
+    while ((dp = readdir(dirp)) != NULL) {
+        string file = string(dp->d_name);
+        size_t found = file.find(pattern);
+        if(found != string::npos){
+            file_match = file;
+        }
+    }
+    closedir(dirp);
+    return file_match;
 }
 
 

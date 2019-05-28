@@ -271,3 +271,11 @@ unsigned long int Solver::get_bound_calculations(){
     return bound_calculations;
 }
 
+void Solver::set_initial_solution(vector<Edge> path, int cost){
+    if(cost < best_solution){
+        best_solution = cost;
+	    best_solution_nodes = path;
+	}
+}
+
+
