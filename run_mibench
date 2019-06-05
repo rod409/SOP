@@ -29,6 +29,7 @@ run_program susan.248.197
 run_program susan.260.158
 run_program susan.343.182
 
+run_program typeset.10192.123
 run_program typeset.10835.26
 run_program typeset.12395.43
 run_program typeset.15087.23
