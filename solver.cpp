@@ -98,38 +98,40 @@ void Solver::solve_sop_parallel(int num_threads){
 	//thread_active.assign(num_threads, true);
 	enumerated_nodes.assign(num_threads, 0);
 	bound_calculations.assign(num_threads, 0);
-	for(int i = 0; i < cost_graph->node_count(); ++i){
-		solution.clear();
-		solution.push_back(Edge(i, i, 0));
-		reset_solution(SolverState(Edge(i, i, 0), vector<Edge>(1, Edge(i, i, 0)), 0));
-		for(const Edge& e : cost_graph->adj_outgoing(i)){
-			if(valid_node(e.dest)){
-				first_visits.push(SolverState(e, vector<Edge>(1, Edge(i, i, 0)), 0));
-			}
-		}
-		if(!first_visits.empty()){
-			vector<thread> solver_threads(thread_count);
-			vector<Solver> solvers;
-			first_visits_mutex.lock();
-			for(int j = 0; j < thread_count; ++j){
-				solvers.push_back(std::move(Solver(cost_graph, precedance_graph)));
-				if(first_visits.size() < thread_count){
-					split_visits();
-				}
-				if(!first_visits.empty()){
-					SolverState first_visit = first_visits.top();
-					first_visits.pop();
-					solver_threads[j] = thread(&Solver::solve_sop, std::move(solvers[j]), first_visit, j);
-				}
-			}
-			first_visits_mutex.unlock();
-			for(int j = 0; j < thread_count; ++j){
-				if(solver_threads[j].joinable()){
-					solver_threads[j].join();
-				}
-			}
-		}
-	}
+	if(static_lower_bound < best_solution){
+	    for(int i = 0; i < cost_graph->node_count(); ++i){
+		    solution.clear();
+		    solution.push_back(Edge(i, i, 0));
+		    reset_solution(SolverState(Edge(i, i, 0), vector<Edge>(1, Edge(i, i, 0)), 0));
+		    for(const Edge& e : cost_graph->adj_outgoing(i)){
+			    if(valid_node(e.dest)){
+				    first_visits.push(SolverState(e, vector<Edge>(1, Edge(i, i, 0)), 0));
+			    }
+		    }
+		    if(!first_visits.empty()){
+			    vector<thread> solver_threads(thread_count);
+			    vector<Solver> solvers;
+			    first_visits_mutex.lock();
+			    for(int j = 0; j < thread_count; ++j){
+				    solvers.push_back(std::move(Solver(cost_graph, precedance_graph)));
+				    if(first_visits.size() < thread_count){
+					    split_visits();
+				    }
+				    if(!first_visits.empty()){
+					    SolverState first_visit = first_visits.top();
+					    first_visits.pop();
+					    solver_threads[j] = thread(&Solver::solve_sop, std::move(solvers[j]), first_visit, j);
+				    }
+			    }
+			    first_visits_mutex.unlock();
+			    for(int j = 0; j < thread_count; ++j){
+				    if(solver_threads[j].joinable()){
+					    solver_threads[j].join();
+				    }
+			    }
+		    }
+	    }
+    }
 }
 
 void Solver::split_visits(){
@@ -151,7 +153,8 @@ void Solver::split_visits(){
 				first_visit.path.push_back(first_visit.next_edge);
 				first_visit.cost += first_visit.next_edge.weight;
 				visited_nodes[first_visit.next_edge.dest] = true;
-				if(first_visit.cost < best_solution){
+				last_visited_node = first_visit.next_edge.dest;
+				if(better_history(first_visit.cost, first_visit.next_edge.dest)){
 					for(const Edge& e : cost_graph->adj_outgoing(first_visit.next_edge.dest)){
 						if(valid_node(e.dest)){
 							first_visits.push(SolverState(e, first_visit.path, first_visit.cost));
@@ -183,7 +186,9 @@ void Solver::solve_sop(SolverState first_visit, int thread_id){
 			
 			visited_nodes[last_edge.dest] = true;
 			last_visited_node = last_edge.dest;
-			enumerated_nodes[thread_id] += 1;
+			if(thread_id > -1){
+			   enumerated_nodes[thread_id] += 1; 
+			}
 			if(solution.size() == solution_size){
 				update_best_solution();
 				if(!st.empty()){
@@ -236,6 +241,8 @@ void Solver::solve_sop(SolverState first_visit, int thread_id){
 			if(!first_visits.empty()){
 				first_visit = first_visits.top();
 				first_visits.pop();
+			} else {
+			    start_new_search = false;
 			}
 		} else {
 			start_new_search = false;
@@ -436,8 +443,9 @@ bool Solver::better_history(int cost, int current_node){
 		hungarian_solver.fix_column(last_edge.dest, last_edge.source);
 		hungarian_solver.solve_dynamic();
 		int bound = hungarian_solver.get_matching_cost()/2;
-		bound_calculations[thread_id] += 1;
-		//std::cout << "Calculated bound: " << bound << std::endl;
+		if(thread_id > -1){
+		    bound_calculations[thread_id] += 1;
+		}
 		
 		p = history.find(history_pair);
 		if(p.first == history.end()){

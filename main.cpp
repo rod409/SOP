@@ -69,7 +69,7 @@ int main(int argc, char *argv[]){
     size_t pos = file_name.find(delimiter);
     size_t pos_end = file_name.find(".sop");
     string folder = file_name.substr(0, pos);
-    string problem = file_name.substr(pos+1, pos_end-pos-1);
+    string problem = file_name.substr(pos+1, pos_end-pos);
     
     string path = "TOURS";
     if(folder == "tsplib"){
