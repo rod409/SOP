@@ -169,8 +169,9 @@ void Solver::solve_sop(SolverState first_visit, int thread_id){
 	this->thread_id = thread_id;
 	int solution_size = cost_graph->node_count();
 	bool start_new_search = true;
-	bool create_thread = true;
+	
 	while(start_new_search){
+		bool create_thread = true;
 		vector<Edge> st;
 		reset_solution(first_visit);
 		st.push_back(first_visit.next_edge);
@@ -201,7 +202,7 @@ void Solver::solve_sop(SolverState first_visit, int thread_id){
 					if(create_thread && st.size() > 1 && active_thread_count < thread_count){
 					    Edge next_edge = st.front();
 					    SolverState state = generate_solver_state(next_edge);
-					    if((active_thread_count < thread_count) && ((cost_graph->node_count() - state.path.size()) > cost_graph->node_count()/2)){
+					    if((active_thread_count < thread_count) && (state.path.size() <= 5)){
 					        st.erase(st.begin());
 					        first_visits_mutex.lock();
 					        first_visits.push(state);
