@@ -7,11 +7,12 @@
 
 class SolverState{
 	public:
-		SolverState(Edge next_edge, std::vector<Edge> path, int cost);
+		SolverState(Edge next_edge, std::vector<Edge> path, int cost, int bound);
 		SolverState(const SolverState& state);
 		Edge next_edge;
 		std::vector<Edge> path;
 		int cost;
+		int lower_bound;
 };
 
 class SolverStateCompare{

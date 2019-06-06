@@ -55,7 +55,7 @@ class Solver {
 		void reset_solution(SolverState state);
 		int edge_bound(int current_node);
 		void backtrack(int source);
-		bool better_history(int cost, int current_node);
+		int get_lower_bound(int cost, int current_node, std::vector<bool>);
 		void split_visits();
 		static vector<vector<int>> cost_matrix;
 		static int max_edge_weight;
@@ -68,5 +68,11 @@ class Solver {
 		static vector<unsigned long int> enumerated_nodes;
 		static vector<unsigned long int> bound_calculations;
 };
+
+struct {
+	bool operator()(const pair<Edge, int>& s1, const pair<Edge, int>& s2) const{
+		return s1.second > s2.second;
+	}
+} EdgeBoundCompare;
 
 #endif
