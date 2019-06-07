@@ -18,7 +18,7 @@ class SolverState{
 class SolverStateCompare{
 	public:
 		bool operator()(const SolverState& s1, const SolverState& s2) const{
-			return s1.path.size() > s2.path.size();
+			return s1.lower_bound > s2.lower_bound;
 		}
 };
 
