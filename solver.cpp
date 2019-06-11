@@ -37,6 +37,8 @@ static std::chrono::time_point<std::chrono::system_clock> start_time;
 static mutex best_solution_mutex;
 static priority_queue<SolverState, vector<SolverState>, SolverStateCompare> first_visits;
 static mutex first_visits_mutex;
+static int main_enumerated_nodes = 0;
+static int main_bound_calculations = 0;
 
 HashMap<pair<vector<bool>, int>, HistoryNode> Solver::history;
 vector<unsigned long int> Solver::enumerated_nodes;
@@ -91,7 +93,7 @@ void Solver::set_hash_size(size_t size){
 void Solver::solve_sop_parallel(int num_threads){
 	start_time = std::chrono::system_clock::now();
 	thread_count = num_threads;
-	active_thread_count = num_threads;
+	active_thread_count = 0;
 	enumerated_nodes.assign(num_threads, 0);
 	bound_calculations.assign(num_threads, 0);
 	if(static_lower_bound < best_solution){
@@ -116,6 +118,9 @@ void Solver::solve_sop_parallel(int num_threads){
 				    if(!first_visits.empty()){
 					    SolverState first_visit = first_visits.top();
 					    first_visits.pop();
+					    active_lock.lock();
+					    ++active_thread_count;
+					    active_lock.unlock();
 					    solver_threads[j] = thread(&Solver::solve_sop, std::move(solvers[j]), first_visit, j);
 				    }
 			    }
@@ -152,6 +157,11 @@ void Solver::split_visits(){
 				visited_nodes[first_visit.next_edge.dest] = true;
 				last_visited_node = first_visit.next_edge.dest;
 				reset_solution(first_visit);
+				if(thread_id > -1){
+			       enumerated_nodes[thread_id] += 1; 
+			    } else {
+			        main_enumerated_nodes += 1;
+			    }
 				if((lower_bound = get_lower_bound(first_visit.cost, first_visit.next_edge.dest, visited_nodes)) < best_solution){
 					for(const Edge& e : cost_graph->adj_outgoing(first_visit.next_edge.dest)){
 						if(valid_node(e.dest)){
@@ -189,6 +199,8 @@ void Solver::solve_sop(SolverState first_visit, int thread_id){
 		    hungarian_solver.fix_column(last_edge.dest, last_edge.source);
 			if(thread_id > -1){
 			   enumerated_nodes[thread_id] += 1; 
+			} else {
+			    main_enumerated_nodes += 1;
 			}
 			if(solution.size() == solution_size){
 				update_best_solution();
@@ -468,6 +480,8 @@ int Solver::get_lower_bound(int cost, int current_node, vector<bool> visits){
 		lower_bound = hungarian_solver.get_matching_cost()/2;
 		if(thread_id > -1){
 		    bound_calculations[thread_id] += 1;
+		} else {
+		    main_bound_calculations += 1;
 		}
 		
 		p = history.find(history_pair);
@@ -524,10 +538,14 @@ void Solver::nearest_neighbor(){
 }
 
 vector<unsigned long int> Solver::get_enumerated_nodes(){
+    enumerated_nodes[0] += main_enumerated_nodes;
+    std::cout << main_enumerated_nodes << std::endl;
     return enumerated_nodes;
 }
 
 vector<unsigned long int> Solver::get_bound_calculations(){
+    bound_calculations[0] += main_bound_calculations;
+    std::cout << main_bound_calculations << std::endl;
     return bound_calculations;
 }
 
