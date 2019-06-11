@@ -58,65 +58,67 @@ void Solver::solve_sop(){
 	std::chrono::time_point<std::chrono::system_clock> start_time, current_time;
 	start_time = std::chrono::system_clock::now();
 	int solution_size = cost_graph->node_count();	
-	for(int i = 0; i < cost_graph->node_count(); ++i){
-		vector<Edge> st;
-		reset_solution();
-		if(predecessors_visited(i)){
-			Edge start(i, i, 0);
-			st.push_back(start);
-			while(!st.empty()){
-				Edge last_edge = st.back();
-				st.pop_back();
-				solution.push_back(last_edge);
-				solution_weight += last_edge.weight;
+	if(static_lower_bound < best_solution){
+	    for(int i = 0; i < cost_graph->node_count(); ++i){
+		    vector<Edge> st;
+		    reset_solution();
+		    if(predecessors_visited(i)){
+			    Edge start(i, i, 0);
+			    st.push_back(start);
+			    while(!st.empty()){
+				    Edge last_edge = st.back();
+				    st.pop_back();
+				    solution.push_back(last_edge);
+				    solution_weight += last_edge.weight;
 				
-				visited_nodes[last_edge.dest] = true;
-				last_visited_node = last_edge.dest;
-				hungarian_solver.fix_row(last_edge.source, last_edge.dest);
-		        hungarian_solver.fix_column(last_edge.dest, last_edge.source);
-				++enumerated_nodes;
-				if(solution.size() == solution_size){
-                   update_best_solution();
-                   if(!st.empty()){
-                           backtrack(st.back().source);
-                   }
-                } else {
-					const vector<Edge>& sorted_outgoing = cost_graph->sorted_adj_outgoing(last_edge.dest);
-					vector<pair<Edge, int>> priority_edges;
-				    for(int i = sorted_outgoing.size() - 1; i >= 0; --i){
-					    if(valid_node(sorted_outgoing[i].dest)){
-						    visited_nodes[sorted_outgoing[i].dest] = true;
-						    solution_weight += sorted_outgoing[i].weight;
-						    solution.push_back(sorted_outgoing[i]);
-						    pair<Edge, int> node_pair(sorted_outgoing[i], get_lower_bound(solution_weight, sorted_outgoing[i].dest, visited_nodes));
-						    visited_nodes[sorted_outgoing[i].dest] = false;
-						    hungarian_solver.undue_row(sorted_outgoing[i].source, sorted_outgoing[i].dest);
-		                    hungarian_solver.undue_column(sorted_outgoing[i].dest, sorted_outgoing[i].source);
-						    solution_weight -= sorted_outgoing[i].weight;
-						    solution.pop_back();
-						    if(node_pair.second < best_solution){
-						        priority_edges.push_back(node_pair);
-						    }
-					    }
-				    }
-				    if(priority_edges.size() > 0){
-				        std::sort(priority_edges.begin(), priority_edges.end(), EdgeBoundCompare);
-				        for(int i = 0; i < priority_edges.size(); ++i){
-				            st.push_back(priority_edges[i].first);
+				    visited_nodes[last_edge.dest] = true;
+				    last_visited_node = last_edge.dest;
+				    hungarian_solver.fix_row(last_edge.source, last_edge.dest);
+		            hungarian_solver.fix_column(last_edge.dest, last_edge.source);
+				    ++enumerated_nodes;
+				    if(solution.size() == solution_size){
+                       update_best_solution();
+                       if(!st.empty()){
+                               backtrack(st.back().source);
+                       }
+                    } else {
+					    const vector<Edge>& sorted_outgoing = cost_graph->sorted_adj_outgoing(last_edge.dest);
+					    vector<pair<Edge, int>> priority_edges;
+				        for(int i = sorted_outgoing.size() - 1; i >= 0; --i){
+					        if(valid_node(sorted_outgoing[i].dest)){
+						        visited_nodes[sorted_outgoing[i].dest] = true;
+						        solution_weight += sorted_outgoing[i].weight;
+						        solution.push_back(sorted_outgoing[i]);
+						        pair<Edge, int> node_pair(sorted_outgoing[i], get_lower_bound(solution_weight, sorted_outgoing[i].dest, visited_nodes));
+						        visited_nodes[sorted_outgoing[i].dest] = false;
+						        hungarian_solver.undue_row(sorted_outgoing[i].source, sorted_outgoing[i].dest);
+		                        hungarian_solver.undue_column(sorted_outgoing[i].dest, sorted_outgoing[i].source);
+						        solution_weight -= sorted_outgoing[i].weight;
+						        solution.pop_back();
+						        if(node_pair.second < best_solution){
+						            priority_edges.push_back(node_pair);
+						        }
+					        }
 				        }
-				    } else {
-				        if(!st.empty()){
-					        backtrack(st.back().source);
+				        if(priority_edges.size() > 0){
+				            std::sort(priority_edges.begin(), priority_edges.end(), EdgeBoundCompare);
+				            for(int i = 0; i < priority_edges.size(); ++i){
+				                st.push_back(priority_edges[i].first);
+				            }
+				        } else {
+				            if(!st.empty()){
+					            backtrack(st.back().source);
+				            }
 				        }
 				    }
-				}
-				current_time = std::chrono::system_clock::now();
-			    std::chrono::duration<double> elapsed_time = current_time - start_time;
-			    if(elapsed_time.count() > time_limit){
-				    break;
+				    current_time = std::chrono::system_clock::now();
+			        std::chrono::duration<double> elapsed_time = current_time - start_time;
+			        if(elapsed_time.count() > time_limit){
+				        break;
+			        }
 			    }
-			}
-		}
+		    }
+	    }
 	}
 }
 
