@@ -539,13 +539,11 @@ void Solver::nearest_neighbor(){
 
 vector<unsigned long int> Solver::get_enumerated_nodes(){
     enumerated_nodes[0] += main_enumerated_nodes;
-    std::cout << main_enumerated_nodes << std::endl;
     return enumerated_nodes;
 }
 
 vector<unsigned long int> Solver::get_bound_calculations(){
     bound_calculations[0] += main_bound_calculations;
-    std::cout << main_bound_calculations << std::endl;
     return bound_calculations;
 }
 

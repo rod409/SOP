@@ -85,8 +85,10 @@ int main(int argc, char *argv[]){
     struct tour start_tour;
     if(path != ""){
         string matching_file = match_file(path, problem);
-        start_tour = read_tour_file(path + "/" + matching_file, g);
-        s.set_initial_solution(start_tour.path, start_tour.cost);
+        if(matching_file != ""){
+            start_tour = read_tour_file(path + "/" + matching_file, g);
+            s.set_initial_solution(start_tour.path, start_tour.cost);
+        }
     }
     s.nearest_neighbor();
     		
@@ -267,14 +269,17 @@ string match_file(const string& directory, string pattern){
     string file_match = "";
     DIR* dirp = opendir(directory.c_str());
     struct dirent * dp;
-    while ((dp = readdir(dirp)) != NULL) {
-        string file = string(dp->d_name);
-        size_t found = file.find(pattern);
-        if(found != string::npos){
-            file_match = file;
+    if(dirp != NULL){
+        while ((dp = readdir(dirp)) != NULL) {
+            string file = string(dp->d_name);
+            size_t found = file.find(pattern);
+            if(found != string::npos){
+                file_match = file;
+            }
         }
-    }
     closedir(dirp);
+    }
+    
     return file_match;
 }
 
