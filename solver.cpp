@@ -35,7 +35,8 @@ static int static_lower_bound = 0;
 static int time_limit = 100;
 static std::chrono::time_point<std::chrono::system_clock> start_time;
 static mutex best_solution_mutex;
-static priority_queue<SolverState, vector<SolverState>, SolverStateCompare> first_visits;
+static vector<SolverState> first_visits;
+static int next_visit = 0;
 static mutex first_visits_mutex;
 static int main_enumerated_nodes = 0;
 static int main_bound_calculations = 0;
@@ -101,9 +102,9 @@ void Solver::solve_sop_parallel(int num_threads){
 		    solution.clear();
 		    solution.push_back(Edge(i, i, 0));
 		    reset_solution(SolverState(Edge(i, i, 0), vector<Edge>(1, Edge(i, i, 0)), 0, 0));
-		    for(const Edge& e : cost_graph->adj_outgoing(i)){
+		    for(const Edge& e : cost_graph->sorted_adj_outgoing(i)){
 			    if(valid_node(e.dest)){
-				    first_visits.push(SolverState(e, vector<Edge>(1, Edge(i, i, 0)), 0, static_lower_bound));
+				    first_visits.push_back(SolverState(e, vector<Edge>(1, Edge(i, i, 0)), 0, static_lower_bound));
 			    }
 		    }
 		    if(!first_visits.empty()){
@@ -116,8 +117,11 @@ void Solver::solve_sop_parallel(int num_threads){
 					    split_visits();
 				    }
 				    if(!first_visits.empty()){
-					    SolverState first_visit = first_visits.top();
-					    first_visits.pop();
+					    SolverState first_visit = first_visits[next_visit];
+					    first_visits.erase(first_visits.begin() + next_visit);
+					    if(next_visit >= first_visits.size()){
+					        next_visit = 0;
+					    }
 					    active_lock.lock();
 					    ++active_thread_count;
 					    active_lock.unlock();
@@ -144,13 +148,13 @@ void Solver::split_visits(){
 		if(first_visits.empty() || first_visits.size() > thread_count){
 			split = false;
 		} else {
-			SolverState first_visit = first_visits.top();
+			SolverState first_visit = first_visits[0];
 			visited_nodes.assign(cost_graph->node_count(), false);
 			for(const Edge& e: first_visit.path){
 				visited_nodes[e.dest] = true;
 			}
 			if(first_visit.path.size() < cost_graph->node_count()-1){
-				first_visits.pop();
+				first_visits.erase(first_visits.begin());
 				--index;
 				first_visit.path.push_back(first_visit.next_edge);
 				first_visit.cost += first_visit.next_edge.weight;
@@ -165,7 +169,10 @@ void Solver::split_visits(){
 				if((lower_bound = get_lower_bound(first_visit.cost, first_visit.next_edge.dest, visited_nodes)) < best_solution){
 					for(const Edge& e : cost_graph->adj_outgoing(first_visit.next_edge.dest)){
 						if(valid_node(e.dest)){
-							first_visits.push(SolverState(e, first_visit.path, first_visit.cost, lower_bound));
+							first_visits.push_back(SolverState(e, first_visit.path, first_visit.cost, lower_bound));
+							if(next_visit == 0){
+							    next_visit = first_visits.size()-1;
+							}
 						}
 					}
 				}
@@ -240,7 +247,8 @@ void Solver::solve_sop(SolverState first_visit, int thread_id){
 					        if((active_thread_count < thread_count) && (state.path.size() <= 5)){
 					            st.erase(st.begin());
 					            first_visits_mutex.lock();
-					            first_visits.push(state);
+					            first_visits.push_back(state);
+					            next_visit = 0;
 					            first_visits_mutex.unlock();
 					        } else {
 					            if(active_thread_count < thread_count){
@@ -271,8 +279,11 @@ void Solver::solve_sop(SolverState first_visit, int thread_id){
 				split_visits();
 			}
 			if(!first_visits.empty()){
-				first_visit = first_visits.top();
-				first_visits.pop();
+				first_visit = first_visits[next_visit];
+		        first_visits.erase(first_visits.begin() + next_visit);
+			    if(next_visit >= first_visits.size()){
+			        next_visit = 0;
+			    }
 			} else {
 			    start_new_search = false;
 			}
@@ -301,8 +312,11 @@ void Solver::solve_sop(SolverState first_visit, int thread_id){
 				        split_visits();
 			        }
 			        if(!first_visits.empty()){
-				        first_visit = first_visits.top();
-				        first_visits.pop();
+				        first_visit = first_visits[next_visit];
+				        first_visits.erase(first_visits.begin() + next_visit);
+					    if(next_visit >= first_visits.size()){
+					        next_visit = 0;
+					    }
 				        start_new_search = true;
 				        active_lock.lock();
 				        ++active_thread_count;
