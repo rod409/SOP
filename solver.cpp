@@ -214,54 +214,36 @@ void Solver::solve_sop(SolverState first_visit, int thread_id){
 				if(!st.empty()){
 					backtrack(st.back().source);
 				}
-			}else {
+			}else if(get_lower_bound(solution_weight, last_edge.dest, visited_nodes) < best_solution) {
 				const vector<Edge>& sorted_outgoing = cost_graph->sorted_adj_outgoing(last_edge.dest);
-				vector<pair<Edge, int>> priority_edges;
 				for(int i = sorted_outgoing.size() - 1; i >= 0; --i){
 					if(valid_node(sorted_outgoing[i].dest)){
-						visited_nodes[sorted_outgoing[i].dest] = true;
-						solution_weight += sorted_outgoing[i].weight;
-						solution.push_back(sorted_outgoing[i]);
-						pair<Edge, int> node_pair(sorted_outgoing[i], get_lower_bound(solution_weight, sorted_outgoing[i].dest, visited_nodes));
-						visited_nodes[sorted_outgoing[i].dest] = false;
-						hungarian_solver.undue_row(sorted_outgoing[i].source, sorted_outgoing[i].dest);
-		                hungarian_solver.undue_column(sorted_outgoing[i].dest, sorted_outgoing[i].source);
-						solution_weight -= sorted_outgoing[i].weight;
-						solution.pop_back();
-						if(node_pair.second < best_solution){
-						    priority_edges.push_back(node_pair);
-						}
-					}
-				}
-				if(priority_edges.size() > 0){
-				    std::sort(priority_edges.begin(), priority_edges.end(), EdgeBoundCompare);
-				    for(int i = 0; i < priority_edges.size(); ++i){
-				        st.push_back(priority_edges[i].first);
-				    }
-				} else {
-				    if(!st.empty()){
-					    backtrack(st.back().source);
-					    if(create_thread && st.size() > 1 && active_thread_count < thread_count){
-					        Edge next_edge = st.front();
-					        SolverState state = generate_solver_state(next_edge);
-					        if((active_thread_count < thread_count) && (state.path.size() <= 5)){
-					            st.erase(st.begin());
-					            first_visits_mutex.lock();
-					            first_visits.push_back(state);
-					            next_visit = 0;
-					            first_visits_mutex.unlock();
-					        } else {
-					            if(active_thread_count < thread_count){
-					                create_thread = false;
-					            }
-					            
-					        }
-					        cv.notify_all();
-					    }
+					    st.push_back(sorted_outgoing[i]);
 				    }
 				}
-				
+			} else {
+			    if(!st.empty()){
+				    backtrack(st.back().source);
+				    if(create_thread && st.size() > 1 && active_thread_count < thread_count){
+				        Edge next_edge = st.front();
+				        SolverState state = generate_solver_state(next_edge);
+				        if((active_thread_count < thread_count) && (state.path.size() <= 5)){
+				            st.erase(st.begin());
+				            first_visits_mutex.lock();
+				            first_visits.push_back(state);
+				            next_visit = 0;
+				            first_visits_mutex.unlock();
+				        } else {
+				            if(active_thread_count < thread_count){
+				                create_thread = false;
+				            }
+				            
+				        }
+				        cv.notify_all();
+				    }
+			    }
 			}
+			
 			current_time = std::chrono::system_clock::now();
 			std::chrono::duration<double> elapsed_time = current_time - start_time;
 			if(elapsed_time.count() > time_limit){
